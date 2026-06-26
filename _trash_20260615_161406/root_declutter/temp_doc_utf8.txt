@@ -1,0 +1,101 @@
+﻿PS04CMCA51 (PROJECT WORK) 
+MCA-IV 
+
+Important Deadlines
+
+
+
+
+
+
+PS04CMCA51 (PROJECT WORK) 
+MCA-IV 
+
+General Guidelines
+
+Submit TWO hard copies of a project report, on or before 18th April 2026, Saturday to the department. Use A-4 size papers. Strictly follow the format of the Title page given at the end of this document.
+The project report must contain a certificate from the company on company letter pad, signed by the company guide, stating the title, completion of the work and mentioning the period of the project work (i.e. from date to date).
+Two-page summary of the work (i.e. Extended Abstract) should be the last two pages of the project report.
+Soft copy of the presentation slides should be submitted to the internal guide latest by 18th April 2026 , Saturday, at the Department.
+Project report should be appropriately divided into chapters, sections and paragraphs as per the software engineering life cycle. Continuity in the report should be maintained.
+Content of the work should be given more emphasis rather than irrelevant details of the organization, software tools etc.
+The project report should contain well-organized documentation. Appropriate selection of fonts/sizes, spacing, formatting, charts and diagrams (if applicable), will be appreciated for effective presentation. Take care of spellings, grammar, construction of sentences, phrases, etc. 
+If the project work is done in a group, you must mention the names of other team members along with institution names (irrespective of whether they belong to our university or other university). This information should be given after the Table of Contents on a separate page in the following format:
+
+
+Name of the member    Exam No.*     E-Mail ID    Name of the institution   
+â€¦    â€¦     â€¦    â€¦
+â€¦    â€¦     â€¦    â€¦
+â€¦    â€¦     â€¦    â€¦
+* If the candidate is appearing in the PS04CMCA51 examination.
+In case of group work, the documentation should emphasize work carried out by an individual member. However, an overview of the entire system may be provided.
+In a four months project, substantial work is expected. At the end some tangible output should be generated to justify the work. Use real data to describe the system output.
+The source code is desirable to justify the quantum and quality of the work, but it is not mandatory to attach it with the project report. We in no way prefer to infringe the policy of the organization about the source code. Since this is an academic work, if it is possible to give some code as examples, without affecting the organizational policy, it may help in the evaluation process. You may supplement this with appropriate screenshots and design (system, database, etc.). In the absence of the source code, it is expected that the core logic explanation should clarify the functioning of the system.
+Each student will be required to submit a joining report and monthly progress reports duly signed.
+
+TITLE PAGE OF THE PROJECT REPORT
+ (Please donâ€™t print these two lines in your certificate)
+
+
+[Project Title]
+Submitted toSARDAR PATEL UNIVERSITYVallabh VidyanagarSubmitted by[Name of the Student]Seat No. :  [nnnn]ofPost Graduate Department of Computer Science and TechnologySardar Patel UniversityVallabh VidyanagarApril 2026A project report submitted as a partial fulfillment of the degree of Master of Computer Applications (MCA)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Post Graduate Department of Computer Science and Technology
+Sardar Patel University
+Vallabh Vidyanagar
+
+
+
+
+CERTIFICATE
+
+This is to certify that ___________________________________ of Master of Computer Applications (MCA) IV semester has worked on the project entitled   â€œ________________________________________â€   satisfactory towards the partial fulfillment of the degree of Master of Computer Applications (MCA) during the final semester at the Post Graduate Department of Computer Science and Technology, Sardar Patel University, Vallabh Vidyanagar, Gujarat, India.
+
+
+
+
+Date of Submission 
+20th April, 2026 
+
+
+
+
+Internal Project Guide       Head of the Department
+
+

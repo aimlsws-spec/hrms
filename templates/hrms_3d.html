@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS AI - 3D Interface</title>
+    <link rel="stylesheet" href="/static/css/hrms_3d.css">
+</head>
+<body>
+    <div class="scene">
+        <!-- 3D Background -->
+        <div class="bg-animation">
+            <div class="floating-cube"></div>
+            <div class="floating-cube"></div>
+            <div class="floating-cube"></div>
+        </div>
+
+        <!-- Main Container -->
+        <div class="container">
+            <!-- Header -->
+            <header class="header-3d">
+                <div class="logo-container">
+                    <div class="logo-cube">
+                        <div class="face front">HR</div>
+                        <div class="face back">MS</div>
+                        <div class="face right">AI</div>
+                        <div class="face left">3D</div>
+                        <div class="face top">💼</div>
+                        <div class="face bottom">🤖</div>
+                    </div>
+                    <h1 class="title-3d">HRMS AI Assistant</h1>
+                </div>
+                <nav class="nav-3d">
+                    <button class="nav-btn active" data-section="chat">💬 Chat</button>
+                    <button class="nav-btn" data-section="employees">👥 Employees</button>
+                    <button class="nav-btn" data-section="documents">📄 Documents</button>
+                    <button class="nav-btn" data-section="analytics">📊 Analytics</button>
+                </nav>
+            </header>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Chat Section -->
+                <section id="chat" class="section active">
+                    <div class="chat-container-3d">
+                        <div class="chat-sidebar">
+                            <div class="sidebar-header">
+                                <button class="new-chat-btn-3d" id="newChatBtn">
+                                    <span class="btn-text">+ New Chat</span>
+                                    <div class="btn-glow"></div>
+                                </button>
+                            </div>
+                            <div class="chat-history-3d" id="chatHistory"></div>
+                        </div>
+
+                        <div class="chat-main-3d">
+                            <div class="chat-messages-3d" id="chatMessages">
+                                <div class="welcome-screen-3d">
+                                    <div class="welcome-cube">
+                                        <div class="cube-face front">🤖</div>
+                                        <div class="cube-face back">💼</div>
+                                        <div class="cube-face right">📊</div>
+                                        <div class="cube-face left">👥</div>
+                                        <div class="cube-face top">🎯</div>
+                                        <div class="cube-face bottom">⚡</div>
+                                    </div>
+                                    <h2>Welcome to HRMS AI</h2>
+                                    <p>Your intelligent HR assistant in 3D</p>
+                                    
+                                    <div class="quick-actions-3d">
+                                        <div class="action-card" data-prompt="employees from gj">
+                                            <div class="card-icon">👥</div>
+                                            <h3>Find Employees</h3>
+                                            <p>Search by location, department, or name</p>
+                                        </div>
+                                        <div class="action-card" data-prompt="What is the parental leave policy?">
+                                            <div class="card-icon">📋</div>
+                                            <h3>HR Policies</h3>
+                                            <p>Get instant policy information</p>
+                                        </div>
+                                        <div class="action-card" data-prompt="generate offer letter for John Doe">
+                                            <div class="card-icon">📄</div>
+                                            <h3>Generate Documents</h3>
+                                            <p>Create salary slips, offer letters</p>
+                                        </div>
+                                        <div class="action-card" data-prompt="show my leave balance">
+                                            <div class="card-icon">🏖️</div>
+                                            <h3>Leave Management</h3>
+                                            <p>Check balance, apply for leave</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="chat-input-container-3d">
+                                <div class="input-wrapper-3d">
+                                    <textarea id="chatInput" class="chat-input-3d" placeholder="Ask me anything about HR..." rows="1"></textarea>
+                                    <button id="sendBtn" class="send-btn-3d">
+                                        <span class="btn-icon">➤</span>
+                                        <div class="btn-ripple"></div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Employees Section -->
+                <section id="employees" class="section">
+                    <div class="employees-3d">
+                        <h2>Employee Directory</h2>
+                        <div class="search-bar-3d">
+                            <input type="text" placeholder="Search employees..." class="search-input-3d">
+                            <button class="search-btn-3d">🔍</button>
+                        </div>
+                        <div class="employee-grid-3d" id="employeeGrid">
+                            <!-- Employee cards will be populated here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Documents Section -->
+                <section id="documents" class="section">
+                    <div class="documents-3d">
+                        <h2>Document Center</h2>
+                        <div class="doc-types-3d">
+                            <div class="doc-card-3d" data-type="salary">
+                                <div class="doc-icon">💰</div>
+                                <h3>Salary Slips</h3>
+                                <p>Generate monthly salary slips</p>
+                            </div>
+                            <div class="doc-card-3d" data-type="offer">
+                                <div class="doc-icon">📝</div>
+                                <h3>Offer Letters</h3>
+                                <p>Create job offer letters</p>
+                            </div>
+                            <div class="doc-card-3d" data-type="relieving">
+                                <div class="doc-icon">🚪</div>
+                                <h3>Relieving Letters</h3>
+                                <p>Generate exit documents</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Analytics Section -->
+                <section id="analytics" class="section">
+                    <div class="analytics-3d">
+                        <h2>HR Analytics</h2>
+                        <div class="stats-grid-3d">
+                            <div class="stat-card-3d">
+                                <div class="stat-icon">👥</div>
+                                <div class="stat-number">247</div>
+                                <div class="stat-label">Total Employees</div>
+                            </div>
+                            <div class="stat-card-3d">
+                                <div class="stat-icon">🏢</div>
+                                <div class="stat-number">12</div>
+                                <div class="stat-label">Departments</div>
+                            </div>
+                            <div class="stat-card-3d">
+                                <div class="stat-icon">📍</div>
+                                <div class="stat-number">8</div>
+                                <div class="stat-label">Locations</div>
+                            </div>
+                            <div class="stat-card-3d">
+                                <div class="stat-icon">📊</div>
+                                <div class="stat-number">94%</div>
+                                <div class="stat-label">Satisfaction</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Floating Action Button -->
+        <div class="fab-3d" id="fabBtn">
+            <div class="fab-icon">🤖</div>
+            <div class="fab-glow"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/hrms_3d.js"></script>
+</body>
+</html>

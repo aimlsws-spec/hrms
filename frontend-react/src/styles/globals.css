@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-gray-900 antialiased;
+  }
+}
+
+/* ── Live attendance table: new-row animation ──────────────────────────────── */
+@keyframes row-enter {
+  0%   { opacity: 0; transform: translateY(-6px); background-color: rgb(220 252 231); } /* green-100 */
+  25%  { opacity: 1; transform: translateY(0);    background-color: rgb(220 252 231); }
+  100% { opacity: 1; transform: translateY(0);    background-color: transparent; }
+}
+
+.row-new {
+  animation: row-enter 1.4s ease-out forwards;
+}

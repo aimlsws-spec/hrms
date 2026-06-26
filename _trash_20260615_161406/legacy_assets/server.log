@@ -1,0 +1,2 @@
+INFO:     127.0.0.1:60672 - "POST /api/documents/generate-appointment-letter HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62194 - "GET /api/documents/download/appointment_letter_EMP0007_20260603174132.pdf HTTP/1.1" 200 OK

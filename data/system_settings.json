@@ -1,0 +1,25 @@
+{
+  "company_name": "HRMS Enterprise",
+  "timezone": "Asia/Kolkata (IST)",
+  "currency": "INR (\u20b9)",
+  "date_format": "DD/MM/YYYY",
+  "work_start": "09:30",
+  "work_end": "18:30",
+  "work_days": [
+    "mon",
+    "tue",
+    "wed",
+    "thu",
+    "fri",
+    "sat"
+  ],
+  "accountant": {
+    "companyName": "Seawind Solutions",
+    "payrollCycle": "monthly",
+    "currency": "INR",
+    "payDay": "25",
+    "fiscalYearStart": "april",
+    "notifyOnPayroll": true,
+    "notifyOnExpense": true
+  }
+}

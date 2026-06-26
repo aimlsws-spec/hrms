@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <script>
+    // Safe Global Fetch Interceptor for Production
+    (function () {
+      if (window.__fetchInterceptorAttached) return;
+      const originalFetch = window.fetch;
+      window.fetch = function (resource, config) {
+        if (typeof resource === 'string' && resource.startsWith('/api/') && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+          resource = 'https://hrmsapi.seawindsolution.com' + resource;
+        }
+        return originalFetch(resource, config);
+      };
+      window.__fetchInterceptorAttached = true;
+    })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accountant Dashboard - HRMS</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon seawind.png">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family:
+        "Inter",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
+      background: #1e3a8a;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      color: #1e293b;
+      padding: 20px 40px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left h1 {
+      font-size: 28px;
+      margin-bottom: 5px;
+      color: #1e3a8a;
+      font-weight: 700;
+    }
+
+    .header-left p {
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-radius: 12px;
+      background: #f1f5f9;
+      border: 1px solid rgba(30, 58, 138, 0.2);
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1e3a8a;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+    }
+
+    .logout-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .logout-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 30px auto;
+      padding: 0 30px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 30px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 12px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .tab {
+      padding: 12px 24px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.3s;
+      color: #64748b;
+      font-size: 15px;
+    }
+
+    .tab:hover {
+      background: rgba(30, 58, 138, 0.1);
+      color: #1e3a8a;
+    }
+
+    .tab.active {
+      background: #1e3a8a;
+      color: white;
+      box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+    }
+
+    .content {
+      display: none;
+    }
+
+    .content.active {
+      display: block;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 32px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      margin-bottom: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .card h2 {
+      font-size: 24px;
+      margin-bottom: 24px;
+      color: #1e3a8a;
+      font-weight: 700;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      transition: all 0.3s;
+      background: white;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #1e3a8a;
+      box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-size: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary {
+      background: #1e3a8a;
+      color: white;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-info {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+      padding: 16px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .table th {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #1e293b;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .table tr:hover {
+      background: rgba(30, 58, 138, 0.05);
+    }
+
+    .alert {
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 2px solid #10b981;
+    }
+
+    .alert-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #ef4444;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>💼 Accountant Dashboard</h1>
+      <p>Salary Management & Payroll Processing</p>
+    </div>
+    <div class="header-right">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div>
+          <div id="userName" style="font-weight: 600; font-size: 14px">
+            Accountant
+          </div>
+          <div id="userRole" style="font-size: 12px; opacity: 0.9">
+            Finance Department
+          </div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('salary')">
+        Salary Structure
+      </button>
+      <button class="tab" onclick="showTab('payroll')">
+        Payroll Management
+      </button>
+      <button class="tab" onclick="showTab('automated')">
+        Automated Payroll
+      </button>
+      <button class="tab" onclick="showTab('calculator')">
+        Salary Calculator
+      </button>
+    </div>
+
+    <!-- Salary Structure Section -->
+    <div id="salary" class="content active">
+      <div class="card">
+        <h2>Create Salary Structure</h2>
+        <div id="salaryAlert"></div>
+        <form id="salaryForm">
+          <div class="grid">
+            <div class="form-group">
+              <label>Employee ID *</label>
+              <select id="employeeId" required>
+                <option value="">Loading employees...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Basic Salary (₹) *</label>
+              <input type="number" id="basicSalary" required placeholder="25000" />
+            </div>
+            <div class="form-group">
+              <label>HRA (%) *</label>
+              <input type="number" id="hraPercent" required placeholder="40" value="40" />
+            </div>
+            <div class="form-group">
+              <label>Special Allowance (₹) *</label>
+              <input type="number" id="specialAllowance" required placeholder="5000" />
+            </div>
+            <div class="form-group">
+              <label>PF (%) *</label>
+              <input type="number" id="pfPercent" required placeholder="12" value="12" />
+            </div>
+            <div class="form-group">
+              <label>ESIC (%) *</label>
+              <input type="number" id="esicPercent" required placeholder="0.75" value="0.75" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label>TDS (%) *</label>
+              <input type="number" id="tdsPercent" required placeholder="10" value="10" />
+            </div>
+            <div class="form-group">
+              <label>Effective Date *</label>
+              <input type="date" id="effectiveDate" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Create Salary Structure
+          </button>
+          <button type="button" class="btn btn-info" onclick="viewSalaryHistory()" style="margin-left: 10px">
+            <i class="fas fa-history"></i> View History
+          </button>
+        </form>
+        <div id="salaryResults" style="margin-top: 20px"></div>
+      </div>
+    </div>
+
+    <!-- Automated Payroll & Overtime Section -->
+    <div id="automated" class="content">
+      <div class="card">
+        <h2>🤖 Automated Payroll & Overtime</h2>
+        <div id="automatedAlert"></div>
+
+        <!-- Process Monthly Payroll -->
+        <div style="
+              background: #f0f9ff;
+              padding: 20px;
+              border-radius: 8px;
+              margin-bottom: 20px;
+            ">
+          <h3 style="margin-bottom: 15px; color: #0369a1">
+            📊 Process Monthly Payroll
+          </h3>
+          <p style="margin-bottom: 15px; color: #64748b">
+            Automatically calculate salaries with overtime and bonuses for all
+            employees
+          </p>
+          <div class="grid" style="grid-template-columns: 1fr 1fr auto">
+            <div class="form-group">
+              <label>Month</label>
+              <select id="payrollMonth">
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Year</label>
+              <input type="number" id="payrollYear" value="2024" />
+            </div>
+            <div style="align-self: end">
+              <button onclick="processMonthlyPayroll()" class="btn btn-success" style="padding: 12px 24px">
+                <i class="fas fa-play-circle"></i> Process Payroll
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Overtime Tracking -->
+        <div style="
+              background: #fef3c7;
+              padding: 20px;
+              border-radius: 8px;
+              margin-bottom: 20px;
+            ">
+          <h3 style="margin-bottom: 15px; color: #92400e">
+            ⏰ Check Employee Overtime
+          </h3>
+          <div class="grid" style="grid-template-columns: 2fr 1fr 1fr auto">
+            <div class="form-group">
+              <label>Employee</label>
+              <select id="overtimeEmployeeId">
+                <option value="">Select Employee</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Month</label>
+              <select id="overtimeMonth">
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Year</label>
+              <input type="number" id="overtimeYear" value="2024" />
+            </div>
+            <div style="align-self: end">
+              <button onclick="checkOvertime()" class="btn btn-info">
+                <i class="fas fa-search"></i> Check
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results Display -->
+        <div id="automatedResults"></div>
+      </div>
+    </div>
+
+    <!-- Payroll Management Section -->
+    <div id="payroll" class="content">
+      <div class="card">
+        <h2>💰 Payroll Management</h2>
+        <div id="payrollAlert"></div>
+
+        <div style="margin-bottom: 30px">
+          <h3 style="margin-bottom: 15px">Add Bonus/Incentive</h3>
+          <form id="bonusForm">
+            <div class="grid">
+              <div class="form-group">
+                <label>Employee ID *</label>
+                <select id="bonusEmployeeId" required>
+                  <option value="">Select Employee</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Bonus Type *</label>
+                <select id="bonusType" required>
+                  <option value="Performance">Performance Bonus</option>
+                  <option value="Festival">Festival Bonus</option>
+                  <option value="Incentive">Sales Incentive</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Amount (₹) *</label>
+                <input type="number" id="bonusAmount" required placeholder="5000" />
+              </div>
+              <div class="form-group">
+                <label>Month (YYYY-MM) *</label>
+                <input type="month" id="bonusMonth" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Reason</label>
+              <input type="text" id="bonusReason" placeholder="Reason for bonus" />
+            </div>
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-gift"></i> Add Bonus
+            </button>
+          </form>
+        </div>
+
+        <div style="margin-top: 30px">
+          <button onclick="viewPayrollSummary()" class="btn btn-info">
+            <i class="fas fa-chart-bar"></i> View Payroll Summary
+          </button>
+        </div>
+
+        <div id="payrollResults" style="margin-top: 20px"></div>
+      </div>
+    </div>
+
+    <!-- Salary Calculator Section -->
+    <div id="calculator" class="content">
+      <div class="card">
+        <h2>Salary Calculator</h2>
+        <div class="form-group">
+          <label>Basic Salary (₹)</label>
+          <input type="number" id="calcBasic" placeholder="25000" />
+        </div>
+        <div class="form-group">
+          <label>HRA (%)</label>
+          <input type="number" id="calcHra" placeholder="40" value="40" />
+        </div>
+        <div class="form-group">
+          <label>Special Allowance (₹)</label>
+          <input type="number" id="calcSpecial" placeholder="5000" />
+        </div>
+        <button onclick="calculateSalary()" class="btn btn-primary">
+          Calculate
+        </button>
+        <div id="calcResult" style="margin-top: 20px"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load user info
+    document.addEventListener("DOMContentLoaded", function () {
+      const userData = localStorage.getItem("hrms_user");
+      if (!userData) {
+        window.location.href = "/";
+        return;
+      }
+      const user = JSON.parse(userData);
+      document.getElementById("userName").textContent =
+        user.full_name || "Accountant";
+      document.getElementById("userRole").textContent =
+        user.department || "Finance Department";
+      document.getElementById("userAvatar").textContent = (
+        user.full_name || "A"
+      )
+        .charAt(0)
+        .toUpperCase();
+    });
+
+    // Logout function
+    function logout() {
+      if (confirm("Are you sure you want to logout?")) {
+        localStorage.removeItem("hrms_user");
+        localStorage.removeItem("hrms_token");
+        fetch("/api/auth/logout", {
+          method: "POST",
+        })
+          .then(() => (window.location.href = "/"))
+          .catch(() => (window.location.href = "/"));
+      }
+    }
+
+    // Load employees
+    fetch("/api/employees")
+      .then((r) => r.json())
+      .then((data) => {
+        const select1 = document.getElementById("employeeId");
+        const select2 = document.getElementById("bonusEmployeeId");
+        const select3 = document.getElementById("overtimeEmployeeId");
+        select1.innerHTML = '<option value="">Select Employee</option>';
+        select2.innerHTML = '<option value="">Select Employee</option>';
+        select3.innerHTML = '<option value="">Select Employee</option>';
+        if (data.success && data.employees) {
+          data.employees.forEach((emp) => {
+            const option = `<option value="${emp.employee_id}">${emp.employee_id} - ${emp.first_name} ${emp.last_name}</option>`;
+            select1.innerHTML += option;
+            select2.innerHTML += option;
+            select3.innerHTML += option;
+          });
+        }
+      });
+
+    // Set current month/year
+    const now = new Date();
+    document.getElementById("payrollMonth").value = now.getMonth() + 1;
+    document.getElementById("payrollYear").value = now.getFullYear();
+    document.getElementById("overtimeMonth").value = now.getMonth() + 1;
+    document.getElementById("overtimeYear").value = now.getFullYear();
+
+    // Set today's date as default
+    document.getElementById("effectiveDate").valueAsDate = new Date();
+    document.getElementById("bonusMonth").value = new Date()
+      .toISOString()
+      .slice(0, 7);
+
+    function showTab(tab) {
+      document
+        .querySelectorAll(".tab")
+        .forEach((t) => t.classList.remove("active"));
+      document
+        .querySelectorAll(".content")
+        .forEach((c) => c.classList.remove("active"));
+      event.target.classList.add("active");
+      document.getElementById(tab).classList.add("active");
+    }
+
+    // Create salary structure
+    document
+      .getElementById("salaryForm")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = {
+          employee_id: document.getElementById("employeeId").value,
+          basic_salary: parseFloat(
+            document.getElementById("basicSalary").value),
+          hra_percent: parseFloat(
+            document.getElementById("hraPercent").value,
+          ),
+          special_allowance: parseFloat(
+            document.getElementById("specialAllowance").value,
+          ),
+          pf_percent: parseFloat(document.getElementById("pfPercent").value),
+          esic_percent: parseFloat(
+            document.getElementById("esicPercent").value,
+          ),
+          tds_percent: parseFloat(
+            document.getElementById("tdsPercent").value,
+          ),
+          effective_date: document.getElementById("effectiveDate").value,
+        };
+
+        try {
+          const response = await fetch("/api/payroll/create",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+
+          const result = await response.json();
+          if (result.success) {
+            document.getElementById("salaryAlert").innerHTML =
+              '<div class="alert alert-success">✓ Salary structure created successfully! Gross: ₹' +
+              result.data.gross_salary.toFixed(2) +
+              ", Net: ₹" +
+              result.data.net_salary.toFixed(2) +
+              "</div>";
+            document.getElementById("salaryForm").reset();
+          } else {
+            document.getElementById("salaryAlert").innerHTML =
+              '<div class="alert alert-error">✗ ' + result.message + "</div>";
+          }
+        } catch (error) {
+          document.getElementById("salaryAlert").innerHTML =
+            '<div class="alert alert-error">✗ Error: ' +
+            error.message +
+            "</div>";
+        }
+      });
+
+    // View salary history
+    async function viewSalaryHistory() {
+      const empId = document.getElementById("employeeId").value;
+      if (!empId) {
+        alert("Please select an employee first");
+        return;
+      }
+
+      document.getElementById("salaryResults").innerHTML =
+        "<p>Loading...</p>";
+
+      try {
+        const response = await fetch(`/api/payroll/history/${empId}`);
+        const result = await response.json();
+
+        if (result.success && result.history.length > 0) {
+          let html =
+            '<h3>Salary History</h3><table class="table"><tr><th>Effective Date</th><th>Basic</th><th>Gross</th><th>Net</th><th>Created</th></tr>';
+          result.history.forEach((h) => {
+            html += `<tr><td>${h.effective_date}</td><td>₹${h.basic_salary}</td><td>₹${h.gross_salary}</td><td>₹${h.net_salary}</td><td>${h.created_at}</td></tr>`;
+          });
+          html += "</table>";
+          document.getElementById("salaryResults").innerHTML = html;
+        } else {
+          document.getElementById("salaryResults").innerHTML =
+            "<p>No salary history found</p>";
+        }
+      } catch (error) {
+        document.getElementById("salaryResults").innerHTML =
+          '<p style="color: red;">Error: ' + error.message + "</p>";
+      }
+    }
+
+    // Add bonus
+    document
+      .getElementById("bonusForm")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = {
+          employee_id: document.getElementById("bonusEmployeeId").value,
+          bonus_type: document.getElementById("bonusType").value,
+          amount: parseFloat(document.getElementById("bonusAmount").value),
+          month: document.getElementById("bonusMonth").value,
+          reason: document.getElementById("bonusReason").value,
+          created_by: "Accountant",
+        };
+
+        try {
+          const response = await fetch("/api/payroll/bonus",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+
+          const result = await response.json();
+          if (result.success) {
+            document.getElementById("payrollAlert").innerHTML =
+              '<div class="alert alert-success">✓ ' +
+              result.message +
+              "</div>";
+            document.getElementById("bonusForm").reset();
+            document.getElementById("bonusMonth").value = new Date()
+              .toISOString()
+              .slice(0, 7);
+          } else {
+            document.getElementById("payrollAlert").innerHTML =
+              '<div class="alert alert-error">✗ ' + result.message + "</div>";
+          }
+        } catch (error) {
+          document.getElementById("payrollAlert").innerHTML =
+            '<div class="alert alert-error">✗ Error: ' +
+            error.message +
+            "</div>";
+        }
+      });
+
+    // View payroll summary
+    async function viewPayrollSummary() {
+      document.getElementById("payrollResults").innerHTML =
+        "<p>Loading payroll summary...</p>";
+
+      try {
+        const response = await fetch("/api/reports/payroll_report");
+        const result = await response.json();
+
+        if (result.success) {
+          const html = `
+                        <h3>Payroll Summary</h3>
+                        <table class="table">
+                            <tr><th>Metric</th><th>Value</th></tr>
+                            <tr><td>Total Monthly Payroll</td><td>₹${result.data.total_monthly_payroll.toLocaleString()}</td></tr>
+                            <tr><td>Average Salary</td><td>₹${result.data.average_salary.toLocaleString()}</td></tr>
+                            <tr><td>Employees with Salary</td><td>${result.data.employees_with_salary}</td></tr>
+                            <tr><td>Total Employees</td><td>${result.data.total_employees}</td></tr>
+                        </table>
+                    `;
+          document.getElementById("payrollResults").innerHTML = html;
+        } else {
+          document.getElementById("payrollResults").innerHTML =
+            "<p>No payroll data available</p>";
+        }
+      } catch (error) {
+        document.getElementById("payrollResults").innerHTML =
+          '<p style="color: red;">Error: ' + error.message + "</p>";
+      }
+    }
+
+    // Salary calculator
+    function calculateSalary() {
+      const basic =
+        parseFloat(document.getElementById("calcBasic").value) || 0;
+      const hraPercent =
+        parseFloat(document.getElementById("calcHra").value) || 0;
+      const special =
+        parseFloat(document.getElementById("calcSpecial").value) || 0;
+
+      const hra = (basic * hraPercent) / 100;
+      const gross = basic + hra + special;
+      const pf = (basic * 12) / 100;
+      const esic = (gross * 0.75) / 100;
+      const tds = (gross * 10) / 100;
+      const net = gross - (pf + esic + tds);
+
+      const html = `
+                <h3>Salary Breakdown</h3>
+                <table class="table">
+                    <tr><th>Component</th><th>Amount (₹)</th></tr>
+                    <tr><td>Basic Salary</td><td>${basic.toFixed(2)}</td></tr>
+                    <tr><td>HRA (${hraPercent}%)</td><td>${hra.toFixed(2)}</td></tr>
+                    <tr><td>Special Allowance</td><td>${special.toFixed(2)}</td></tr>
+                    <tr><th>Gross Salary</th><th>${gross.toFixed(2)}</th></tr>
+                    <tr><td>PF (12%)</td><td>-${pf.toFixed(2)}</td></tr>
+                    <tr><td>ESIC (0.75%)</td><td>-${esic.toFixed(2)}</td></tr>
+                    <tr><td>TDS (10%)</td><td>-${tds.toFixed(2)}</td></tr>
+                    <tr><th>Net Salary</th><th style="color: #10b981;">${net.toFixed(2)}</th></tr>
+                </table>
+            `;
+      document.getElementById("calcResult").innerHTML = html;
+    }
+
+    // ==================== AUTOMATED PAYROLL FUNCTIONS ====================
+
+    // Process monthly payroll
+    async function processMonthlyPayroll() {
+      const month = parseInt(document.getElementById("payrollMonth").value);
+      const year = parseInt(document.getElementById("payrollYear").value);
+
+      document.getElementById("automatedAlert").innerHTML =
+        '<div class="alert alert-success"><i class="fas fa-spinner fa-spin"></i> Processing payroll for all employees...</div>';
+      document.getElementById("automatedResults").innerHTML = "";
+
+      try {
+        const response = await fetch("/api/payroll/process-monthly",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ month, year }),
+          });
+
+        const result = await response.json();
+
+        if (result.success) {
+          document.getElementById("automatedAlert").innerHTML =
+            `<div class="alert alert-success">✓ Payroll processed successfully! ${result.employees_processed} employees processed.</div>`;
+
+          // Display summary
+          let html = `
+                        <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h3 style="color: #065f46; margin-bottom: 15px;">📊 Payroll Summary - ${getMonthName(month)} ${year}</h3>
+                            <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+                                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: 600; color: #059669;">${result.employees_processed}</div>
+                                    <div style="color: #64748b; margin-top: 5px;">Employees Processed</div>
+                                </div>
+                                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: 600; color: #0369a1;">₹${result.total_payroll.toLocaleString()}</div>
+                                    <div style="color: #64748b; margin-top: 5px;">Total Payroll</div>
+                                </div>
+                                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: 600; color: #7c3aed;">₹${(result.total_payroll / result.employees_processed).toFixed(2)}</div>
+                                    <div style="color: #64748b; margin-top: 5px;">Average Salary</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h3 style="margin-bottom: 15px;">Employee Details (Top 10)</h3>
+                        <table class="table">
+                            <tr>
+                                <th>Employee</th>
+                                <th>Gross Salary</th>
+                                <th>Overtime Hrs</th>
+                                <th>Overtime Amount</th>
+                                <th>Bonus</th>
+                                <th>Net Salary</th>
+                            </tr>
+                    `;
+
+          result.details.slice(0, 10).forEach((emp) => {
+            html += `
+                            <tr>
+                                <td>${emp.employee_name}<br><small style="color: #64748b;">${emp.employee_id}</small></td>
+                                <td>₹${emp.gross_salary.toLocaleString()}</td>
+                                <td>${emp.overtime_hours}</td>
+                                <td>₹${emp.overtime_amount.toLocaleString()}</td>
+                                <td>₹${emp.bonus_amount.toLocaleString()}</td>
+                                <td style="font-weight: 600; color: #059669;">₹${emp.net_salary.toLocaleString()}</td>
+                            </tr>
+                        `;
+          });
+
+          html += "</table>";
+
+          if (result.details.length > 10) {
+            html += `<p style="color: #64748b; margin-top: 10px;">Showing 10 of ${result.details.length} employees</p>`;
+          }
+
+          document.getElementById("automatedResults").innerHTML = html;
+        } else {
+          document.getElementById("automatedAlert").innerHTML =
+            `<div class="alert alert-error">✗ ${result.message}</div>`;
+        }
+      } catch (error) {
+        document.getElementById("automatedAlert").innerHTML =
+          `<div class="alert alert-error">✗ Error: ${error.message}</div>`;
+      }
+    }
+
+    // Check employee overtime
+    async function checkOvertime() {
+      const employeeId = document.getElementById("overtimeEmployeeId").value;
+      const month = parseInt(document.getElementById("overtimeMonth").value);
+      const year = parseInt(document.getElementById("overtimeYear").value);
+
+      if (!employeeId) {
+        alert("Please select an employee");
+        return;
+      }
+
+      document.getElementById("automatedResults").innerHTML =
+        "<p>Loading overtime data...</p>";
+
+      try {
+        const response = await fetch(`/api/payroll/overtime/${employeeId}?month=${month}&year=${year}`);
+        const result = await response.json();
+
+        if (result.success) {
+          const data = result.data;
+          const html = `
+                        <div style="background: #fef3c7; padding: 20px; border-radius: 8px;">
+                            <h3 style="color: #92400e; margin-bottom: 15px;">⏰ Overtime Details - ${getMonthName(month)} ${year}</h3>
+                            <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+                                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                    <div style="font-size: 20px; font-weight: 600; color: #0369a1;">${data.total_hours || 0}</div>
+                                    <div style="color: #64748b; margin-top: 5px;">Total Hours</div>
+                                </div>
+                                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                    <div style="font-size: 20px; font-weight: 600; color: #dc2626;">${data.overtime_hours || 0}</div>
+                                    <div style="color: #64748b; margin-top: 5px;">Overtime Hours</div>
+                                </div>
+                                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                    <div style="font-size: 20px; font-weight: 600; color: #059669;">₹${(data.overtime_amount || 0).toLocaleString()}</div>
+                                    <div style="color: #64748b; margin-top: 5px;">Overtime Amount</div>
+                                </div>
+                                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                    <div style="font-size: 20px; font-weight: 600; color: #7c3aed;">₹${(data.hourly_rate || 0).toFixed(2)}</div>
+                                    <div style="color: #64748b; margin-top: 5px;">Hourly Rate</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px;">
+                                <p style="margin: 0; color: #64748b;">
+                                    <strong>Days Present:</strong> ${data.days_present || 0} | 
+                                    <strong>Standard Hours:</strong> 176 (8hrs × 22 days) | 
+                                    <strong>Overtime Rate:</strong> 1.5×
+                                </p>
+                            </div>
+                        </div>
+                    `;
+          document.getElementById("automatedResults").innerHTML = html;
+        } else {
+          document.getElementById("automatedResults").innerHTML =
+            `<p style="color: #dc2626;">Error: ${result.message}</p>`;
+        }
+      } catch (error) {
+        document.getElementById("automatedResults").innerHTML =
+          `<p style="color: #dc2626;">Error: ${error.message}</p>`;
+      }
+    }
+
+    // Helper function to get month name
+    function getMonthName(month) {
+      const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      return months[month - 1];
+    }
+  </script>
+</body>
+
+</html>

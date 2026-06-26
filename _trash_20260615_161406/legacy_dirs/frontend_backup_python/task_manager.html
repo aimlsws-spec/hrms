@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+// Safe Global Fetch Interceptor for Production
+(function() {
+    if (window.__fetchInterceptorAttached) return;
+    const originalFetch = window.fetch;
+    window.fetch = function(resource, config) {
+        if (typeof resource === 'string' && resource.startsWith('/api/') && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+            resource = 'https://hrmsapi.seawindsolution.com' + resource;
+        }
+        return originalFetch(resource, config);
+    };
+    window.__fetchInterceptorAttached = true;
+})();
+</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Manager - Kanban Board</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon seawind.png">
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+      }
+
+      .kanban-container {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      .kanban-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+      .kanban-header h1 {
+        color: #2c3e50;
+        font-size: 28px;
+      }
+      .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+      .btn-primary {
+        background: #3498db;
+        color: white;
+      }
+      .btn-primary:hover {
+        background: #2980b9;
+      }
+
+      .kanban-board {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+      .kanban-column {
+        background: #fff;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        min-height: 500px;
+      }
+      .kanban-column.drag-over {
+        background: #f0f9ff;
+        border: 2px dashed #3498db;
+      }
+      .kanban-column.drag-over {
+        background: #f0f9ff;
+        border: 2px dashed #3498db;
+      }
+      .column-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #ecf0f1;
+      }
+      .column-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+      .task-count {
+        background: #ecf0f1;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #7f8c8d;
+      }
+
+      .task-card {
+        background: #fff;
+        border: 1px solid #e1e8ed;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 10px;
+        cursor: move;
+        transition: all 0.2s;
+      }
+      .task-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+      }
+      .task-card.dragging {
+        opacity: 0.5;
+      }
+      .task-card.flagged {
+        border-left: 4px solid #e74c3c;
+        background: #fff5f5;
+      }
+      .flag-badge {
+        background: #e74c3c;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .task-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+      }
+      .task-meta {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-size: 12px;
+        color: #7f8c8d;
+      }
+      .priority {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .priority-low {
+        background: #d5f4e6;
+        color: #27ae60;
+      }
+      .priority-medium {
+        background: #fff3cd;
+        color: #f39c12;
+      }
+      .priority-high {
+        background: #f8d7da;
+        color: #e74c3c;
+      }
+      .priority-urgent {
+        background: #721c24;
+        color: #fff;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+      }
+      .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-content {
+        background: white;
+        border-radius: 8px;
+        padding: 30px;
+        width: 500px;
+        max-width: 90%;
+      }
+      .modal-header {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 20px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #2c3e50;
+      }
+      .form-group input,
+      .form-group textarea,
+      .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+      .btn-secondary {
+        background: #95a5a6;
+        color: white;
+      }
+      .btn-secondary:hover {
+        background: #7f8c8d;
+      }
+
+      .todo-col {
+        border-top: 3px solid #3498db;
+      }
+      .progress-col {
+        border-top: 3px solid #f39c12;
+      }
+      .review-col {
+        border-top: 3px solid #9b59b6;
+      }
+      .done-col {
+        border-top: 3px solid #27ae60;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="kanban-container">
+      <div class="kanban-header">
+        <h1>📋 Task Manager</h1>
+        <button
+          class="btn btn-primary"
+          id="newTaskBtn"
+          onclick="openModal()"
+          style="display: none"
+        >
+          + New Task
+        </button>
+      </div>
+      <div class="kanban-board" id="kanban-board"></div>
+    </div>
+
+    <div class="modal" id="modal">
+      <div class="modal-content">
+        <div class="modal-header">Create New Task</div>
+        <div class="form-group">
+          <label>Title *</label>
+          <input id="taskTitle" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="taskDescription"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="taskPriority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Due Date</label>
+          <input type="date" id="taskDueDate" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal()">
+            Cancel
+          </button>
+          <button class="btn btn-primary" onclick="createTask()">
+            Create Task
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let draggedTask = null;
+      let tasks = { todo: [], in_progress: [], review: [], done: [] };
+      let showModal = false;
+      let currentUserRole = "employee"; // Will be set from session/auth
+
+      async function loadTasks() {
+        console.log("=== LOADING TASKS ===");
+        try {
+          const response = await fetch("/api/task-manager/boards/1/tasks");
+          const data = await response.json();
+          console.log("Tasks API response:", data);
+          if (data.success) {
+            tasks = data.tasks;
+            console.log("Tasks loaded:", tasks);
+            renderBoard();
+          } else {
+            console.error("Failed to load tasks:", data);
+          }
+        } catch (error) {
+          console.error("Error loading tasks:", error);
+        }
+      }
+
+      function renderBoard() {
+        console.log("=== RENDERING BOARD ===");
+        const board = document.getElementById("kanban-board");
+        if (!board) {
+          console.error("Board element not found!");
+          return;
+        }
+        board.innerHTML = `
+                ${renderColumn("📝 To Do", "todo", tasks.todo, "todo-col")}
+                ${renderColumn("🔄 In Progress", "in_progress", tasks.in_progress, "progress-col")}
+                ${renderColumn("👀 Review", "review", tasks.review, "review-col")}
+                ${renderColumn("✅ Done", "done", tasks.done, "done-col")}
+            `;
+        console.log("Board rendered, attaching listeners...");
+        attachDragListeners();
+      }
+
+      function renderColumn(title, status, taskList, className) {
+        return `
+                <div class="kanban-column ${className}" data-status="${status}">
+                    <div class="column-header">
+                        <span class="column-title">${title}</span>
+                        <span class="task-count">${taskList.length}</span>
+                    </div>
+                    ${taskList.map((task) => renderTask(task, status)).join("")}
+                </div>
+            `;
+      }
+
+      function renderTask(task, status) {
+        return `
+                <div class="task-card ${task.flagged ? "flagged" : ""}" draggable="true" data-task-id="${task.id}" data-status="${status}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div class="task-title">${task.title}</div>
+                        ${task.flagged ? '<span class="flag-badge">🚩 FLAGGED</span>' : ""}
+                    </div>
+                    ${task.description ? `<div style="font-size: 12px; color: #7f8c8d; margin-bottom: 8px;">${task.description}</div>` : ""}
+                    <div class="task-meta">
+                        <span class="priority priority-${task.priority}">${task.priority.toUpperCase()}</span>
+                        ${task.assigned_name ? `<span>👤 ${task.assigned_name}</span>` : ""}
+                        ${task.due_date ? `<span>📅 ${task.due_date}</span>` : ""}
+                        <div style="margin-left: auto; display: flex; gap: 8px;">
+                            ${status === "done" && currentUserRole === "admin" ? `<button onclick="markIncomplete(${task.id})" style="background: #f39c12; color: white; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">Mark Incomplete</button>` : ""}
+                            ${currentUserRole === "admin" ? `<button onclick="deleteTask(${task.id})" style="background: none; border: none; cursor: pointer; font-size: 16px;">🗑️</button>` : ""}
+                        </div>
+                    </div>
+                </div>
+            `;
+      }
+
+      function attachDragListeners() {
+        const cards = document.querySelectorAll(".task-card");
+        const columns = document.querySelectorAll(".kanban-column");
+
+        console.log(
+          "Attaching listeners to",
+          cards.length,
+          "cards and",
+          columns.length,
+          "columns",
+        );
+
+        cards.forEach((card) => {
+          card.addEventListener("dragstart", handleDragStart);
+          card.addEventListener("dragend", handleDragEnd);
+        });
+
+        columns.forEach((column) => {
+          column.addEventListener("dragover", handleDragOver);
+          column.addEventListener("dragenter", handleDragEnter);
+          column.addEventListener("dragleave", handleDragLeave);
+          column.addEventListener("drop", handleDrop);
+        });
+      }
+
+      function handleDragStart(e) {
+        const card = e.target.closest(".task-card");
+        if (!card) return;
+
+        const taskId = card.dataset.taskId;
+        const status = card.dataset.status;
+        draggedTask = { id: taskId, fromStatus: status };
+        card.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", taskId);
+        console.log("Drag started:", taskId, "from", status);
+      }
+
+      function handleDragEnd(e) {
+        const card = e.target.closest(".task-card");
+        if (card) card.classList.remove("dragging");
+      }
+
+      function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }
+
+      function handleDragEnter(e) {
+        e.preventDefault();
+        const column = e.target.closest(".kanban-column");
+        if (column) {
+          column.classList.add("drag-over");
+        }
+      }
+
+      function handleDragLeave(e) {
+        const column = e.target.closest(".kanban-column");
+        if (column && !column.contains(e.relatedTarget)) {
+          column.classList.remove("drag-over");
+        }
+      }
+
+      async function handleDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const column = e.target.closest(".kanban-column");
+        if (column) {
+          column.classList.remove("drag-over");
+        }
+
+        if (!draggedTask) {
+          console.log("No dragged task");
+          return;
+        }
+
+        const toStatus = column ? column.dataset.status : null;
+        if (!toStatus) {
+          console.log("No target status found");
+          draggedTask = null;
+          return;
+        }
+
+        const taskId = draggedTask.id;
+        const fromStatus = draggedTask.fromStatus;
+
+        console.log("Drop:", taskId, "from", fromStatus, "to", toStatus);
+
+        if (fromStatus === toStatus) {
+          console.log("Same column, skipping");
+          draggedTask = null;
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/task-manager/tasks/${taskId}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: toStatus }),
+            });
+          const result = await response.json();
+          console.log("Update response:", response.status, result);
+          await loadTasks();
+        } catch (error) {
+          console.error("Error moving task:", error);
+        }
+        draggedTask = null;
+      }
+
+      async function deleteTask(taskId) {
+        if (!confirm("Delete this task?")) return;
+        try {
+          await fetch(`/api/task-manager/tasks/${taskId}`,
+            { method: "DELETE" });
+          await loadTasks();
+        } catch (error) {
+          console.error("Error deleting task:", error);
+        }
+      }
+
+      async function markIncomplete(taskId) {
+        if (
+          !confirm(
+            "Mark this task as incomplete? This will flag it for review.",
+          )
+        )
+          return;
+        try {
+          await fetch(`/api/task-manager/tasks/${taskId}/mark-incomplete`,
+            { method: "POST" });
+          await loadTasks();
+        } catch (error) {
+          console.error("Error marking incomplete:", error);
+        }
+      }
+
+      function openModal() {
+        showModal = true;
+        document.getElementById("modal").classList.add("active");
+      }
+
+      function closeModal() {
+        showModal = false;
+        document.getElementById("modal").classList.remove("active");
+      }
+
+      async function createTask() {
+        const title = document.getElementById("taskTitle").value;
+        const description = document.getElementById("taskDescription").value;
+        const priority = document.getElementById("taskPriority").value;
+        const dueDate = document.getElementById("taskDueDate").value;
+
+        if (!title) {
+          alert("Please enter a task title");
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/task-manager/boards/1/tasks",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title,
+                description,
+                priority,
+                due_date: dueDate,
+                status: "todo",
+              }),
+            });
+          if (response.ok) {
+            await loadTasks();
+            closeModal();
+            document.getElementById("taskTitle").value = "";
+            document.getElementById("taskDescription").value = "";
+            document.getElementById("taskPriority").value = "medium";
+            document.getElementById("taskDueDate").value = "";
+          }
+        } catch (error) {
+          console.error("Error creating task:", error);
+        }
+      }
+
+      window.onload = () => {
+        console.log("=== TASK MANAGER LOADED ===");
+        const urlParams = new URLSearchParams(window.location.search);
+        currentUserRole = urlParams.get("role") || "employee";
+
+        console.log("Current user role:", currentUserRole);
+        console.log("Page URL:", window.location.href);
+
+        // Show button only for admin
+        if (currentUserRole === "admin") {
+          document.getElementById("newTaskBtn").style.display = "inline-block";
+          console.log("New task button shown for admin");
+        } else {
+          console.log("New task button hidden for employee");
+        }
+
+        loadTasks();
+      };
+    </script>
+  </body>
+</html>

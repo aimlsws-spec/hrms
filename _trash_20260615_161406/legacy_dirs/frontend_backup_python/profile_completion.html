@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script>
+        // Safe Global Fetch Interceptor for Production
+        (function () {
+            if (window.__fetchInterceptorAttached) return;
+            const originalFetch = window.fetch;
+            window.fetch = function (resource, config) {
+                if (typeof resource === 'string' && resource.startsWith('/api/') && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+                    resource = 'https://hrmsapi.seawindsolution.com' + resource;
+                }
+                return originalFetch(resource, config);
+            };
+            window.__fetchInterceptorAttached = true;
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Your Profile - HRMS</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon seawind.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .profile-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .profile-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .profile-header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .profile-form {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        input,
+        select,
+        textarea {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-input {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .file-input input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .file-input-label:hover {
+            border-color: #4f46e5;
+            background: #eef2ff;
+        }
+
+        .file-preview {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .file-preview img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            margin: 5px;
+            position: relative;
+        }
+
+        .file-item {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .file-remove {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-replace {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-container {
+                margin: 10px;
+                max-width: calc(100vw - 20px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1>Complete Your Profile</h1>
+            <p id="userInfo">Please fill in all required information to access the HRMS system</p>
+        </div>
+
+        <form class="profile-form" id="profileForm" enctype="multipart/form-data">
+            <div id="alertContainer"></div>
+
+            <!-- Debug Info -->
+            <div id="debugInfo"
+                style="background: #f0f0f0; padding: 10px; margin-bottom: 20px; border-radius: 5px; font-size: 12px;">
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <!-- Personal Information -->
+            <div class="section">
+                <h3 class="section-title">👤 Personal Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Father's / Spouse's Name</label>
+                        <input type="text" name="fathers_spouse_name" placeholder="Enter name">
+                    </div>
+                    <div class="form-group">
+                        <label>Date of Birth <span class="required">*</span></label>
+                        <input type="date" name="date_of_birth" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Gender <span class="required">*</span></label>
+                        <select name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Marital Status <span class="required">*</span></label>
+                        <select name="marital_status" required>
+                            <option value="">Select Status</option>
+                            <option value="Single">Single</option>
+                            <option value="Married">Married</option>
+                            <option value="Divorced">Divorced</option>
+                            <option value="Widowed">Widowed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nationality <span class="required">*</span></label>
+                        <select name="nationality" required>
+                            <option value="">Select Country</option>
+                            <option value="Afghan">Afghanistan</option>
+                            <option value="Albanian">Albania</option>
+                            <option value="Algerian">Algeria</option>
+                            <option value="American">United States</option>
+                            <option value="Andorran">Andorra</option>
+                            <option value="Angolan">Angola</option>
+                            <option value="Argentine">Argentina</option>
+                            <option value="Armenian">Armenia</option>
+                            <option value="Australian">Australia</option>
+                            <option value="Austrian">Austria</option>
+                            <option value="Azerbaijani">Azerbaijan</option>
+                            <option value="Bahamian">Bahamas</option>
+                            <option value="Bahraini">Bahrain</option>
+                            <option value="Bangladeshi">Bangladesh</option>
+                            <option value="Barbadian">Barbados</option>
+                            <option value="Belarusian">Belarus</option>
+                            <option value="Belgian">Belgium</option>
+                            <option value="Belizean">Belize</option>
+                            <option value="Beninese">Benin</option>
+                            <option value="Bhutanese">Bhutan</option>
+                            <option value="Bolivian">Bolivia</option>
+                            <option value="Bosnian">Bosnia and Herzegovina</option>
+                            <option value="Botswanan">Botswana</option>
+                            <option value="Brazilian">Brazil</option>
+                            <option value="British">United Kingdom</option>
+                            <option value="Bruneian">Brunei</option>
+                            <option value="Bulgarian">Bulgaria</option>
+                            <option value="Burkinabe">Burkina Faso</option>
+                            <option value="Burmese">Myanmar</option>
+                            <option value="Burundian">Burundi</option>
+                            <option value="Cambodian">Cambodia</option>
+                            <option value="Cameroonian">Cameroon</option>
+                            <option value="Canadian">Canada</option>
+                            <option value="Cape Verdean">Cape Verde</option>
+                            <option value="Central African">Central African Republic</option>
+                            <option value="Chadian">Chad</option>
+                            <option value="Chilean">Chile</option>
+                            <option value="Chinese">China</option>
+                            <option value="Colombian">Colombia</option>
+                            <option value="Comoran">Comoros</option>
+                            <option value="Congolese">Congo</option>
+                            <option value="Costa Rican">Costa Rica</option>
+                            <option value="Croatian">Croatia</option>
+                            <option value="Cuban">Cuba</option>
+                            <option value="Cypriot">Cyprus</option>
+                            <option value="Czech">Czech Republic</option>
+                            <option value="Danish">Denmark</option>
+                            <option value="Djiboutian">Djibouti</option>
+                            <option value="Dominican">Dominican Republic</option>
+                            <option value="Dutch">Netherlands</option>
+                            <option value="Ecuadorean">Ecuador</option>
+                            <option value="Egyptian">Egypt</option>
+                            <option value="Emirati">United Arab Emirates</option>
+                            <option value="English">England</option>
+                            <option value="Eritrean">Eritrea</option>
+                            <option value="Estonian">Estonia</option>
+                            <option value="Ethiopian">Ethiopia</option>
+                            <option value="Fijian">Fiji</option>
+                            <option value="Filipino">Philippines</option>
+                            <option value="Finnish">Finland</option>
+                            <option value="French">France</option>
+                            <option value="Gabonese">Gabon</option>
+                            <option value="Gambian">Gambia</option>
+                            <option value="Georgian">Georgia</option>
+                            <option value="German">Germany</option>
+                            <option value="Ghanaian">Ghana</option>
+                            <option value="Greek">Greece</option>
+                            <option value="Grenadian">Grenada</option>
+                            <option value="Guatemalan">Guatemala</option>
+                            <option value="Guinean">Guinea</option>
+                            <option value="Guyanese">Guyana</option>
+                            <option value="Haitian">Haiti</option>
+                            <option value="Honduran">Honduras</option>
+                            <option value="Hungarian">Hungary</option>
+                            <option value="Icelandic">Iceland</option>
+                            <option value="Indian" selected>India</option>
+                            <option value="Indonesian">Indonesia</option>
+                            <option value="Iranian">Iran</option>
+                            <option value="Iraqi">Iraq</option>
+                            <option value="Irish">Ireland</option>
+                            <option value="Israeli">Israel</option>
+                            <option value="Italian">Italy</option>
+                            <option value="Ivorian">Ivory Coast</option>
+                            <option value="Jamaican">Jamaica</option>
+                            <option value="Japanese">Japan</option>
+                            <option value="Jordanian">Jordan</option>
+                            <option value="Kazakhstani">Kazakhstan</option>
+                            <option value="Kenyan">Kenya</option>
+                            <option value="Kittian and Nevisian">Saint Kitts and Nevis</option>
+                            <option value="Kuwaiti">Kuwait</option>
+                            <option value="Kyrgyz">Kyrgyzstan</option>
+                            <option value="Laotian">Laos</option>
+                            <option value="Latvian">Latvia</option>
+                            <option value="Lebanese">Lebanon</option>
+                            <option value="Liberian">Liberia</option>
+                            <option value="Libyan">Libya</option>
+                            <option value="Liechtensteiner">Liechtenstein</option>
+                            <option value="Lithuanian">Lithuania</option>
+                            <option value="Luxembourgish">Luxembourg</option>
+                            <option value="Macedonian">Macedonia</option>
+                            <option value="Malagasy">Madagascar</option>
+                            <option value="Malawian">Malawi</option>
+                            <option value="Malaysian">Malaysia</option>
+                            <option value="Maldivan">Maldives</option>
+                            <option value="Malian">Mali</option>
+                            <option value="Maltese">Malta</option>
+                            <option value="Marshallese">Marshall Islands</option>
+                            <option value="Mauritanian">Mauritania</option>
+                            <option value="Mauritian">Mauritius</option>
+                            <option value="Mexican">Mexico</option>
+                            <option value="Micronesian">Micronesia</option>
+                            <option value="Moldovan">Moldova</option>
+                            <option value="Monacan">Monaco</option>
+                            <option value="Mongolian">Mongolia</option>
+                            <option value="Moroccan">Morocco</option>
+                            <option value="Mosotho">Lesotho</option>
+                            <option value="Motswana">Botswana</option>
+                            <option value="Mozambican">Mozambique</option>
+                            <option value="Namibian">Namibia</option>
+                            <option value="Nauruan">Nauru</option>
+                            <option value="Nepalese">Nepal</option>
+                            <option value="New Zealander">New Zealand</option>
+                            <option value="Ni-Vanuatu">Vanuatu</option>
+                            <option value="Nicaraguan">Nicaragua</option>
+                            <option value="Nigerian">Nigeria</option>
+                            <option value="Nigerien">Niger</option>
+                            <option value="North Korean">North Korea</option>
+                            <option value="Northern Irish">Northern Ireland</option>
+                            <option value="Norwegian">Norway</option>
+                            <option value="Omani">Oman</option>
+                            <option value="Pakistani">Pakistan</option>
+                            <option value="Palauan">Palau</option>
+                            <option value="Panamanian">Panama</option>
+                            <option value="Papua New Guinean">Papua New Guinea</option>
+                            <option value="Paraguayan">Paraguay</option>
+                            <option value="Peruvian">Peru</option>
+                            <option value="Polish">Poland</option>
+                            <option value="Portuguese">Portugal</option>
+                            <option value="Qatari">Qatar</option>
+                            <option value="Romanian">Romania</option>
+                            <option value="Russian">Russia</option>
+                            <option value="Rwandan">Rwanda</option>
+                            <option value="Saint Lucian">Saint Lucia</option>
+                            <option value="Salvadoran">El Salvador</option>
+                            <option value="Samoan">Samoa</option>
+                            <option value="San Marinese">San Marino</option>
+                            <option value="Sao Tomean">Sao Tome and Principe</option>
+                            <option value="Saudi">Saudi Arabia</option>
+                            <option value="Scottish">Scotland</option>
+                            <option value="Senegalese">Senegal</option>
+                            <option value="Serbian">Serbia</option>
+                            <option value="Seychellois">Seychelles</option>
+                            <option value="Sierra Leonean">Sierra Leone</option>
+                            <option value="Singaporean">Singapore</option>
+                            <option value="Slovakian">Slovakia</option>
+                            <option value="Slovenian">Slovenia</option>
+                            <option value="Solomon Islander">Solomon Islands</option>
+                            <option value="Somali">Somalia</option>
+                            <option value="South African">South Africa</option>
+                            <option value="South Korean">South Korea</option>
+                            <option value="Spanish">Spain</option>
+                            <option value="Sri Lankan">Sri Lanka</option>
+                            <option value="Sudanese">Sudan</option>
+                            <option value="Surinamese">Suriname</option>
+                            <option value="Swazi">Swaziland</option>
+                            <option value="Swedish">Sweden</option>
+                            <option value="Swiss">Switzerland</option>
+                            <option value="Syrian">Syria</option>
+                            <option value="Taiwanese">Taiwan</option>
+                            <option value="Tajik">Tajikistan</option>
+                            <option value="Tanzanian">Tanzania</option>
+                            <option value="Thai">Thailand</option>
+                            <option value="Togolese">Togo</option>
+                            <option value="Tongan">Tonga</option>
+                            <option value="Trinidadian or Tobagonian">Trinidad and Tobago</option>
+                            <option value="Tunisian">Tunisia</option>
+                            <option value="Turkish">Turkey</option>
+                            <option value="Tuvaluan">Tuvalu</option>
+                            <option value="Ugandan">Uganda</option>
+                            <option value="Ukrainian">Ukraine</option>
+                            <option value="Uruguayan">Uruguay</option>
+                            <option value="Uzbekistani">Uzbekistan</option>
+                            <option value="Venezuelan">Venezuela</option>
+                            <option value="Vietnamese">Vietnam</option>
+                            <option value="Welsh">Wales</option>
+                            <option value="Yemenite">Yemen</option>
+                            <option value="Zambian">Zambia</option>
+                            <option value="Zimbabwean">Zimbabwe</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Photograph <span class="required">*</span></label>
+                        <div class="file-input">
+                            <input type="file" id="photograph" name="photograph" accept="image/*" required>
+                            <label for="photograph" class="file-input-label">
+                                📷 Click to upload photograph
+                            </label>
+                            <div class="file-preview" id="photographPreview"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Information -->
+            <div class="section">
+                <h3 class="section-title">🏠 Address Information</h3>
+                <div class="form-group full-width">
+                    <label>Permanent Address <span class="required">*</span></label>
+                    <textarea name="permanent_address" id="permanentAddress" rows="3"
+                        placeholder="Enter permanent address" required></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label>
+                        <input type="checkbox" id="sameAsPermAddress" onchange="toggleCurrentAddress()">
+                        Current Address same as Permanent Address
+                    </label>
+                </div>
+                <div class="form-group full-width" id="currentAddressGroup">
+                    <label>Current Address <span class="required">*</span></label>
+                    <textarea name="current_address" id="currentAddress" rows="3" placeholder="Enter current address"
+                        required></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Alternate Mobile</label>
+                        <input type="tel" name="alternate_mobile" placeholder="Enter alternate mobile">
+                    </div>
+                    <div class="form-group">
+                        <label>Emergency Contact <span class="required">*</span></label>
+                        <input type="tel" name="emergency_number" placeholder="Enter emergency contact" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Identity Documents -->
+            <div class="section">
+                <h3 class="section-title">📄 Identity Documents</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Aadhaar Number <span class="required">*</span></label>
+                        <input type="text" name="aadhaar_number" placeholder="Enter Aadhaar number" maxlength="12"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>PAN Number <span class="required">*</span></label>
+                        <input type="text" name="pan_number" placeholder="Enter PAN number" maxlength="10" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Aadhaar Card Image <span class="required">*</span></label>
+                        <div class="file-input">
+                            <input type="file" id="aadhaar_image" name="aadhaar_image" accept="image/*" required>
+                            <label for="aadhaar_image" class="file-input-label">
+                                📄 Upload Aadhaar Card
+                            </label>
+                            <div class="file-preview" id="aadhaarPreview"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>PAN Card Image <span class="required">*</span></label>
+                        <div class="file-input">
+                            <input type="file" id="pan_image" name="pan_image" accept="image/*" required>
+                            <label for="pan_image" class="file-input-label">
+                                📄 Upload PAN Card
+                            </label>
+                            <div class="file-preview" id="panPreview"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>UAN Number</label>
+                    <input type="text" name="uan_number" placeholder="Enter UAN number">
+                </div>
+            </div>
+
+            <!-- Education -->
+            <div class="section">
+                <h3 class="section-title">🎓 Education</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Highest Qualification <span class="required">*</span></label>
+                        <input type="text" name="highest_qualification" placeholder="e.g., Bachelor's Degree" required>
+                    </div>
+                    <div class="form-group">
+                        <label>University Name <span class="required">*</span></label>
+                        <input type="text" name="university_name" placeholder="Enter university name" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Year of Passing <span class="required">*</span></label>
+                        <input type="number" name="year_of_passing" placeholder="e.g., 2020" min="1950" max="2030"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>Degree Certificates <span class="required">*</span></label>
+                        <div class="file-input">
+                            <input type="file" id="degree_certificates" name="degree_certificates" accept="image/*,.pdf"
+                                multiple required>
+                            <label for="degree_certificates" class="file-input-label">
+                                📜 Upload Certificates
+                            </label>
+                            <div class="file-preview" id="certificatesPreview"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Experience -->
+            <div class="section">
+                <h3 class="section-title">💼 Experience</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Are you a fresher? <span class="required">*</span></label>
+                        <select name="is_fresher" onchange="toggleExperienceFields(this.value)" required>
+                            <option value="">Select</option>
+                            <option value="1">Yes, I'm a fresher</option>
+                            <option value="0">No, I have experience</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="experienceGroup" style="display: none;">
+                        <label>Experience Letters <span class="required" id="expRequired">*</span></label>
+                        <div class="file-input">
+                            <input type="file" id="experience_letters" name="experience_letters" accept="image/*,.pdf"
+                                multiple>
+                            <label for="experience_letters" class="file-input-label">
+                                📋 Upload Experience Letters
+                            </label>
+                            <div class="file-preview" id="experiencePreview"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row" id="relievingGroup" style="display: none;">
+                    <div class="form-group">
+                        <label>Relieving Letter <span class="required" id="relRequired">*</span></label>
+                        <div class="file-input">
+                            <input type="file" id="relieving_letter" name="relieving_letter" accept="image/*,.pdf">
+                            <label for="relieving_letter" class="file-input-label">
+                                📄 Upload Relieving Letter
+                            </label>
+                            <div class="file-preview" id="relievingPreview"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Banking Information -->
+            <div class="section">
+                <h3 class="section-title">🏦 Banking Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bank Name <span class="required">*</span></label>
+                        <input type="text" name="bank_name" placeholder="Enter bank name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Account Holder Name <span class="required">*</span></label>
+                        <input type="text" name="account_holder_name" placeholder="Enter account holder name" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Account Number <span class="required">*</span></label>
+                        <input type="text" name="account_number" placeholder="Enter account number" required>
+                    </div>
+                    <div class="form-group">
+                        <label>IFSC Code <span class="required">*</span></label>
+                        <input type="text" name="ifsc_code" placeholder="Enter IFSC code" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Branch Name</label>
+                        <input type="text" name="branch_name" placeholder="Enter branch name">
+                    </div>
+                    <div class="form-group">
+                        <label>Signature <span class="required">*</span></label>
+                        <div class="file-input">
+                            <input type="file" id="signature" name="signature" accept="image/*" required>
+                            <label for="signature" class="file-input-label">
+                                ✍️ Upload Signature
+                            </label>
+                            <div class="file-preview" id="signaturePreview"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">Complete Profile</button>
+        </form>
+    </div>
+
+    <script>
+        // Get user data from localStorage and display user info
+        console.log('Checking localStorage for user data...');
+        const userData = JSON.parse(localStorage.getItem('hrms_user') || '{}');
+        console.log('Raw localStorage data:', localStorage.getItem('hrms_user'));
+        console.log('Parsed user data:', userData);
+
+        // Also check for other possible keys
+        console.log('All localStorage keys:', Object.keys(localStorage));
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            console.log(`localStorage[${key}]:`, localStorage.getItem(key));
+        }
+
+        if (!userData.user_id) {
+            console.log('No user_id found, redirecting to login...');
+            showAlert('No user session found. Redirecting to login...', 'error');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+        } else {
+            console.log('User found:', userData.user_id);
+            // Display user information
+            const userInfo = document.getElementById('userInfo');
+            userInfo.innerHTML = `Welcome ${userData.full_name || userData.username || 'User'} (${userData.user_id}) - Complete your profile to access the system`;
+
+            // Show debug info
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.innerHTML = `<strong>Debug Info:</strong> User ID: ${userData.user_id}, Role: ${userData.role || 'N/A'}, Profile Completed: ${userData.profile_completed || 'false'}`;
+
+            // Pre-fill any existing data
+            if (userData.full_name) {
+                const accountHolderField = document.querySelector('[name="account_holder_name"]');
+                if (accountHolderField) {
+                    accountHolderField.value = userData.full_name;
+                }
+            }
+        }
+
+        // File preview functionality - SIMPLIFIED
+        function setupFilePreview(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+
+            if (!input || !preview) {
+                console.error(`Elements not found: ${inputId} or ${previewId}`);
+                return;
+            }
+
+            input.addEventListener('change', function (e) {
+                const files = e.target.files;
+                preview.innerHTML = '';
+
+                if (files.length === 0) {
+                    preview.innerHTML = '<div style="color: #999;">No files selected</div>';
+                    return;
+                }
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const fileDiv = document.createElement('div');
+                    fileDiv.style.margin = '5px 0';
+                    fileDiv.style.padding = '8px';
+                    fileDiv.style.background = '#e8f5e8';
+                    fileDiv.style.border = '1px solid #4CAF50';
+                    fileDiv.style.borderRadius = '4px';
+                    fileDiv.style.position = 'relative';
+
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.style.maxWidth = '80px';
+                            img.style.maxHeight = '80px';
+                            img.style.marginRight = '10px';
+                            img.style.verticalAlign = 'middle';
+
+                            fileDiv.innerHTML = '';
+                            fileDiv.appendChild(img);
+                            fileDiv.appendChild(document.createTextNode(file.name));
+
+                            // Add remove button
+                            const removeBtn = document.createElement('button');
+                            removeBtn.innerHTML = '×';
+                            removeBtn.style.position = 'absolute';
+                            removeBtn.style.top = '2px';
+                            removeBtn.style.right = '2px';
+                            removeBtn.style.background = '#ff4444';
+                            removeBtn.style.color = 'white';
+                            removeBtn.style.border = 'none';
+                            removeBtn.style.borderRadius = '50%';
+                            removeBtn.style.width = '20px';
+                            removeBtn.style.height = '20px';
+                            removeBtn.style.cursor = 'pointer';
+                            removeBtn.onclick = function () {
+                                input.value = '';
+                                preview.innerHTML = '<div style="color: #999;">No files selected</div>';
+                            };
+                            fileDiv.appendChild(removeBtn);
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        fileDiv.innerHTML = `📄 ${file.name}`;
+
+                        // Add remove button
+                        const removeBtn = document.createElement('button');
+                        removeBtn.innerHTML = '×';
+                        removeBtn.style.marginLeft = '10px';
+                        removeBtn.style.background = '#ff4444';
+                        removeBtn.style.color = 'white';
+                        removeBtn.style.border = 'none';
+                        removeBtn.style.borderRadius = '3px';
+                        removeBtn.style.padding = '2px 6px';
+                        removeBtn.style.cursor = 'pointer';
+                        removeBtn.onclick = function () {
+                            input.value = '';
+                            preview.innerHTML = '<div style="color: #999;">No files selected</div>';
+                        };
+                        fileDiv.appendChild(removeBtn);
+                    }
+
+                    preview.appendChild(fileDiv);
+                }
+
+                updateProgress();
+            });
+        }
+
+        // Toggle current address
+        function toggleCurrentAddress() {
+            const checkbox = document.getElementById('sameAsPermAddress');
+            const currentAddressGroup = document.getElementById('currentAddressGroup');
+            const currentAddress = document.getElementById('currentAddress');
+            const permanentAddress = document.getElementById('permanentAddress');
+
+            if (checkbox.checked) {
+                currentAddressGroup.style.display = 'none';
+                currentAddress.value = permanentAddress.value;
+                currentAddress.required = false;
+
+                // Auto-update when permanent address changes
+                permanentAddress.addEventListener('input', function () {
+                    if (checkbox.checked) {
+                        currentAddress.value = this.value;
+                    }
+                });
+            } else {
+                currentAddressGroup.style.display = 'block';
+                currentAddress.required = true;
+                currentAddress.value = ''; // Clear the field when unchecked
+            }
+        }
+
+        // Setup file previews with debugging
+        console.log('Setting up file previews...');
+        setupFilePreview('photograph', 'photographPreview');
+        setupFilePreview('aadhaar_image', 'aadhaarPreview');
+        setupFilePreview('pan_image', 'panPreview');
+        setupFilePreview('degree_certificates', 'certificatesPreview');
+        setupFilePreview('experience_letters', 'experiencePreview');
+        setupFilePreview('relieving_letter', 'relievingPreview');
+        setupFilePreview('signature', 'signaturePreview');
+        console.log('File previews setup complete.');
+
+        // Test file input functionality and make labels clickable
+        document.querySelectorAll('input[type="file"]').forEach(input => {
+            console.log('Found file input:', input.id, input.name);
+
+            // Make sure the label triggers the file input
+            const label = document.querySelector(`label[for="${input.id}"]`);
+            if (label) {
+                label.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    console.log('Label clicked for:', input.id);
+                    input.click();
+                });
+            }
+
+            input.addEventListener('click', function () {
+                console.log('File input clicked:', this.id);
+            });
+
+            input.addEventListener('change', function () {
+                console.log('File input changed:', this.id, 'files:', this.files.length);
+            });
+        });
+
+        // Toggle experience fields
+        function toggleExperienceFields(value) {
+            const experienceGroup = document.getElementById('experienceGroup');
+            const relievingGroup = document.getElementById('relievingGroup');
+            const expInput = document.getElementById('experience_letters');
+            const relInput = document.getElementById('relieving_letter');
+            const expRequired = document.getElementById('expRequired');
+            const relRequired = document.getElementById('relRequired');
+
+            if (value === '0') { // Experienced - FORCE document upload
+                experienceGroup.style.display = 'block';
+                relievingGroup.style.display = 'block';
+                expInput.required = true;
+                relInput.required = true;
+                expRequired.style.display = 'inline';
+                relRequired.style.display = 'inline';
+                console.log('Experience fields enabled - documents REQUIRED');
+            } else { // Fresher or not selected
+                experienceGroup.style.display = 'none';
+                relievingGroup.style.display = 'none';
+                expInput.required = false;
+                relInput.required = false;
+                expRequired.style.display = 'none';
+                relRequired.style.display = 'none';
+                console.log('Experience fields disabled - documents not required');
+            }
+            updateProgress();
+        }
+
+        // Progress tracking
+        function updateProgress() {
+            const form = document.getElementById('profileForm');
+            const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+            let filled = 0;
+
+            inputs.forEach(input => {
+                if (input.type === 'file') {
+                    if (input.files.length > 0) filled++;
+                } else if (input.value.trim()) {
+                    filled++;
+                }
+            });
+
+            const progress = (filled / inputs.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        // Add event listeners for progress tracking
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('DOM loaded, setting up event listeners...');
+            const inputs = document.querySelectorAll('input, select, textarea');
+            console.log('Found inputs:', inputs.length);
+            inputs.forEach(input => {
+                input.addEventListener('input', updateProgress);
+                input.addEventListener('change', updateProgress);
+            });
+
+            // Make sure file inputs are working
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            console.log('File inputs found:', fileInputs.length);
+            fileInputs.forEach(input => {
+                console.log('File input:', input.id, 'required:', input.required);
+            });
+        });
+
+        // Form submission with strict validation
+        document.getElementById('profileForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            // STRICT VALIDATION - Check experience requirements
+            const isFresher = document.querySelector('select[name="is_fresher"]').value;
+            const expLetters = document.getElementById('experience_letters');
+            const relievingLetter = document.getElementById('relieving_letter');
+
+            console.log('Form submission - is_fresher:', isFresher);
+            console.log('Experience letters files:', expLetters.files.length);
+            console.log('Relieving letter files:', relievingLetter.files.length);
+
+            if (isFresher === '0') { // Experienced
+                if (!expLetters.files.length || !relievingLetter.files.length) {
+                    showAlert('ERROR: Experience Letters and Relieving Letter are MANDATORY for experienced candidates!', 'error');
+                    return false;
+                }
+                console.log('Validation passed: Experience documents uploaded');
+            }
+
+            // Check all required file uploads
+            const requiredFiles = ['photograph', 'aadhaar_image', 'pan_image', 'degree_certificates', 'signature'];
+            for (let fieldName of requiredFiles) {
+                const fileInput = document.getElementById(fieldName);
+                if (fileInput && fileInput.required && !fileInput.files.length) {
+                    showAlert(`ERROR: ${fieldName.replace('_', ' ')} is required!`, 'error');
+                    return false;
+                }
+            }
+
+            // Validate all mandatory form fields
+            const requiredFormFields = [
+                'date_of_birth', 'gender', 'marital_status', 'nationality',
+                'current_address', 'permanent_address', 'emergency_number',
+                'aadhaar_number', 'pan_number', 'highest_qualification',
+                'university_name', 'year_of_passing', 'bank_name',
+                'account_holder_name', 'account_number', 'ifsc_code'
+            ];
+
+            for (let fieldName of requiredFormFields) {
+                const field = document.querySelector(`[name="${fieldName}"]`);
+                if (field && field.required && !field.value.trim()) {
+                    showAlert(`ERROR: ${fieldName.replace('_', ' ')} is required!`, 'error');
+                    field.focus();
+                    return false;
+                }
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading Files...';
+
+            try {
+                const formData = new FormData(this);
+                formData.append('employee_id', userData.user_id);
+
+                console.log('Submitting form data:', {
+                    employee_id: userData.user_id,
+                    is_fresher: isFresher,
+                    experience_files: expLetters.files.length,
+                    relieving_files: relievingLetter.files.length
+                });
+
+                const response = await fetch('/api/profile/complete', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Profile completed successfully! Redirecting to dashboard...', 'success');
+
+                    // Update user data in localStorage
+                    const currentUserData = JSON.parse(localStorage.getItem('hrms_user'));
+                    currentUserData.profile_completed = true;
+                    localStorage.setItem('hrms_user', JSON.stringify(currentUserData));
+
+                    setTimeout(() => {
+                        window.location.href = 'enterprise_portal.html';
+                    }, 2000);
+                } else {
+                    showAlert(result.message || 'Failed to complete profile. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Profile completion error:', error);
+                showAlert('Network error. Please check your connection and try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Complete Profile';
+            }
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        // Test user function for debugging
+        function setTestUser() {
+            const testUser = {
+                user_id: 'EMP027',
+                username: 'champu@gmail.com',
+                email: 'champu@gmail.com',
+                full_name: 'Champu Kumar',
+                role: 'employee',
+                profile_completed: false
+            };
+            localStorage.setItem('hrms_user', JSON.stringify(testUser));
+            console.log('Test user set:', testUser);
+            location.reload();
+        }
+
+        // Initialize progress
+        updateProgress();
+    </script>
+</body>
+
+</html>

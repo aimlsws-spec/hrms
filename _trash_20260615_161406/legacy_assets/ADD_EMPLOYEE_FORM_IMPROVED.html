@@ -1,0 +1,182 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/css/intlTelInput.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/intlTelInput.min.js"></script>
+
+<h3 style="margin-bottom: 20px; color: #1e293b;">Add New Employee</h3>
+<form id="addEmployeeForm" style="display: grid; gap: 16px;">
+    <!-- Name Fields (3 separate) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">First Name * <small style="color:#64748b;">(required)</small></label>
+            <input type="text" id="empFirstName" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Middle Name <small style="color:#64748b;">(optional)</small></label>
+            <input type="text" id="empMiddleName" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Last Name * <small style="color:#64748b;">(required)</small></label>
+            <input type="text" id="empLastName" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Email * <small style="color:#64748b;">(valid email format)</small></label>
+            <input type="email" id="empEmail" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Phone * <small style="color:#64748b;">(10 digits)</small></label>
+            <input type="tel" id="empPhone" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Department *</label>
+            <select id="empDepartment" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+                <option value="">Select Department</option>
+                <option value="HR">HR</option>
+                <option value="IT">IT</option>
+                <option value="Finance">Finance</option>
+                <option value="Sales">Sales</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Operations">Operations</option>
+            </select>
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Job Title *</label>
+            <input type="text" id="empTitle" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Password * <small style="color:#64748b;">(min 8 characters)</small></label>
+            <input type="password" id="empPassword" required minlength="8" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Annual CTC (₹) * <small style="color:#64748b;">(numbers only)</small></label>
+            <input type="number" id="empCTC" required min="0" step="1000" placeholder="e.g., 600000" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+    </div>
+    <div style="display: flex; gap: 12px; margin-top: 16px;">
+        <button type="submit" class="btn btn-primary">Add Employee</button>
+        <button type="button" class="btn btn-secondary" onclick="displayResults('employeeResults', '<p style=\\"color: #64748b;\\">Select an action to manage employees.</p>')">Cancel</button>
+    </div>
+</form>
+
+<script>
+// Safe Global Fetch Interceptor for Production
+(function() {
+    if (window.__fetchInterceptorAttached) return;
+    const originalFetch = window.fetch;
+    window.fetch = function(resource, config) {
+        if (typeof resource === 'string' && resource.startsWith('/api/') && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+            resource = 'https://hrmsapi.seawindsolution.com' + resource;
+        }
+        return originalFetch(resource, config);
+    };
+    window.__fetchInterceptorAttached = true;
+})();
+
+// Initialize phone input with country code
+setTimeout(() => {
+    const phoneInput = document.querySelector("#empPhone");
+    if (phoneInput && !phoneInput.classList.contains('iti-initialized')) {
+        phoneInput.classList.add('iti-initialized');
+        window.empPhoneIti = window.intlTelInput(phoneInput, {
+            initialCountry: "in",
+            preferredCountries: ["in", "us", "gb"],
+            separateDialCode: true
+        });
+    }
+    
+    document.getElementById('addEmployeeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        createEmployeeImproved();
+    });
+}, 500);
+
+function createEmployeeImproved() {
+    const firstName = document.getElementById('empFirstName').value.trim();
+    const middleName = document.getElementById('empMiddleName').value.trim();
+    const lastName = document.getElementById('empLastName').value.trim();
+    const email = document.getElementById('empEmail').value.trim();
+    const department = document.getElementById('empDepartment').value;
+    const title = document.getElementById('empTitle').value.trim();
+    const password = document.getElementById('empPassword').value;
+    const ctc = document.getElementById('empCTC').value;
+    
+    // Validation
+    if (!firstName || !lastName) {
+        alert('⚠ First Name and Last Name are required');
+        return;
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('⚠ Please enter a valid email address');
+        return;
+    }
+    
+    // Phone validation
+    const phone = window.empPhoneIti ? window.empPhoneIti.getNumber() : document.getElementById('empPhone').value;
+    if (!phone || phone.length < 10) {
+        alert('⚠ Please enter a valid phone number');
+        return;
+    }
+    
+    // Password validation
+    if (password.length < 8) {
+        alert('⚠ Password must be at least 8 characters');
+        return;
+    }
+    
+    const fullName = `${firstName} ${middleName} ${lastName}`.replace(/\s+/g, ' ').trim();
+    const countryCode = window.empPhoneIti ? '+' + window.empPhoneIti.getSelectedCountryData().dialCode : '+91';
+    
+    const formData = {
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        name: fullName,
+        full_name: fullName,
+        email: email,
+        phone: phone,
+        phone_country_code: countryCode,
+        title: title,
+        designation: title,
+        department: department,
+        password: password,
+        annual_ctc: parseFloat(ctc),
+        status: 'Active'
+    };
+    
+    console.log('Creating employee:', formData);
+    
+    displayResults('employeeResults', '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#1e3a8a;"></i><p style="margin-top:16px;color:#64748b;">Creating employee...</p></div>');
+    
+    fetch('/api/employees/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(async response => {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text.substring(0, 200));
+            throw new Error('Backend API error: Server returned HTML instead of JSON. Please contact backend team.');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            displayResults('employeeResults', '<div style="background:#d1fae5;padding:20px;border-radius:8px;border-left:4px solid #10b981;"><h3 style="color:#065f46;margin:0 0 8px 0;">✓ Employee Created Successfully!</h3><p style="color:#047857;margin:0;">Employee has been added to the system.</p></div>');
+            setTimeout(() => showAllEmployees(), 2000);
+        } else {
+            throw new Error(data.message || 'Failed to create employee');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        displayResults('employeeResults', '<div style="background:#fee2e2;padding:20px;border-radius:8px;border-left:4px solid #ef4444;"><h3 style="color:#991b1b;margin:0 0 8px 0;">✗ Error Creating Employee</h3><p style="color:#dc2626;margin:0;">' + error.message + '</p><button onclick="addNewEmployee()" class="btn btn-primary" style="margin-top:12px;">Try Again</button></div>');
+    });
+}
+</script>
+

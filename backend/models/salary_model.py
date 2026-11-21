@@ -18,6 +18,9 @@ def fetch_all_with_latest_salary():
                 e.employee_code                              AS employee_id,
                 e.full_name                                  AS name,
                 COALESCE(e.department, 'N/A')               AS department,
+                e.joining_date                               AS joined_on,
+                e.default_work_mode                          AS work_mode,
+                e.title                                      AS designation,
                 es.id                                        AS salary_id,
                 es.ctc,
                 COALESCE(es.basic_salary, 0)                 AS basic_salary,
@@ -46,6 +49,18 @@ def fetch_all_with_latest_salary():
             ORDER BY e.full_name
         """)
         return cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
+
+
+def update_designation(employee_id: str, designation: str):
+    """Set the employee's job title (employees.title)."""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE employees SET title = %s WHERE employee_code = %s", (designation, employee_id))
+        conn.commit()
     finally:
         cur.close()
         conn.close()

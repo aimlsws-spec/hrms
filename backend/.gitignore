@@ -1,0 +1,52 @@
+# Environment — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Python virtual environment
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Generated documents (PDFs, salary slips, temp docs)
+generated_docs/
+temp_doc/
+
+# Sensitive employee data (photos, Aadhaar, PAN, etc.)
+employee_data/
+
+# WFH selfie encrypted storage — never commit biometric data
+wfh_selfies/
+
+# Trash / cleanup folders
+_trash/
+_trash_*/
+
+# Logs
+*.log
+*.txt
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+
+# NOTE: data/, docs/, scripts/, sql/, and images/ are intentionally NOT
+# ignored — unlike generated_docs/, temp_doc/, employee_data/, and
+# wfh_selfies/ above, these hold source content the app needs at runtime
+# (static UI assets in images/images/, SQL migration files in sql/sql/,
+# seed/config JSON in data/data/, reference docs, utility scripts) or that
+# a fresh clone should ship with. A prior version of this file excluded them
+# as "runtime artifacts", which meant a fresh checkout was missing the UI
+# images and the SQL/data reference files entirely — fixed in this audit.

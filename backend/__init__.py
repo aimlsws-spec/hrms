@@ -17,9 +17,8 @@ that gets migrated out of the monolithic app.py follows the same 4-layer split.
 import os
 import sys
 
-# Bridge: the not-yet-migrated flat modules (config, payroll_engine, …) live in
-# core/ (a sibling of this package). Ensure it's importable even when backend is
-# imported directly (e.g. tests), not only via app.py.
-_CORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "core")
+# Bridge: the not-yet-migrated flat modules live in core/ (a sub-package).
+# Ensure it's importable even when backend is imported directly (e.g. tests).
+_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "core")
 if _CORE not in sys.path:
     sys.path.insert(0, _CORE)

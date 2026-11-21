@@ -7,7 +7,7 @@ _compute), so the service can do the pure calculations without touching the DB.
 """
 
 import logging
-import payroll_engine
+from backend.core import payroll_engine
 from .db import get_connection
 
 log = logging.getLogger(__name__)
@@ -61,18 +61,9 @@ def fetch_payslip_inputs(employee_id: str, month: int, year: int):
         """, (employee_id, month, year))
         present_days = int((cur.fetchone() or {}).get('cnt', 0) or 0)
 
-        month_start = f"{year:04d}-{month:02d}-01"
-        # Use the stored unpaid_days column (set at HR approval time) — accurate for partial
-        # unpaid days (e.g. 2.5).
-        cur.execute("""
-            SELECT COALESCE(SUM(COALESCE(lr.unpaid_days, 0)), 0) AS unpaid_days
-            FROM leave_requests lr
-            WHERE lr.employee_id = %s
-              AND lr.status = 'Approved'
-              AND lr.start_date >= %s
-              AND lr.start_date <  DATE_ADD(%s, INTERVAL 1 MONTH)
-        """, (employee_id, month_start, month_start))
-        unpaid_leave_days = float((cur.fetchone() or {}).get('unpaid_days', 0) or 0)
+        # Leave inside this month only (a leave crossing a month end is split by calendar day)
+        lv_part = payroll_engine.leave_portion_for_month(employee_id, month, year, cur)
+        unpaid_leave_days = lv_part["unpaid_days"]
 
         # Late-arrival summary (needs a live cursor — payroll_engine queries through it)
         cur2 = conn.cursor(dictionary=True)
@@ -81,16 +72,7 @@ def fetch_payslip_inputs(employee_id: str, month: int, year: int):
         )
         cur2.close()
 
-        cur.execute("""
-            SELECT COALESCE(SUM(GREATEST(COALESCE(lr.days_count,0) - COALESCE(lr.unpaid_days,0), 0)), 0)
-                   AS paid_leave_used
-            FROM leave_requests lr
-            WHERE lr.employee_id = %s
-              AND lr.status = 'Approved'
-              AND lr.start_date >= %s
-              AND lr.start_date <  DATE_ADD(%s, INTERVAL 1 MONTH)
-        """, (employee_id, month_start, month_start))
-        paid_leave_used = float((cur.fetchone() or {}).get('paid_leave_used', 0) or 0)
+        paid_leave_used = lv_part["paid_leave_used"]
 
         return {
             "emp":               emp,

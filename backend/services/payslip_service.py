@@ -13,7 +13,7 @@ orchestrates the model + view, and shapes the API responses. No SQL here.
 import logging
 from datetime import datetime
 
-import payroll_engine
+from backend.core import payroll_engine
 from ..models import payslip_model
 from ..views import payslip_view
 

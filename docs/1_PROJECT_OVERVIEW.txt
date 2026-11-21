@@ -1,0 +1,530 @@
+================================================================================
+SEAWIND SOLUTION HRMS - PROJECT OVERVIEW
+================================================================================
+Document : Project Overview
+Version  : 1.1 (DB Sync — July 2026)
+Date     : July 2026
+Company  : Seawind Solution Pvt. Ltd.
+================================================================================
+
+
+1. ARCHITECTURE SUMMARY
+--------------------------------------------------------------------------------
+
+The system is a full-stack Enterprise HRMS built on a two-tier architecture:
+
+  Frontend   : React 18 + TypeScript + Vite  (port 3000 in development)
+  Backend    : FastAPI + Python               (port 8004)
+  Database   : MySQL 8.0                     (database name: hrms)
+  Production : Nginx reverse proxy serving the React SPA and proxying
+               /api/ and /auth/ to the FastAPI backend container
+
+DATABASE POLICY (enforced):
+  The project uses ONLY MySQL (mysql-connector-python 9.7.0).
+  There is NO PostgreSQL, NO SQLite, NO MongoDB, NO MariaDB, NO Prisma,
+  NO SQLAlchemy, NO psycopg2, NO asyncpg, NO mongoose anywhere in the project.
+
+  The only secondary connection is pyodbc to a SQL Server instance.
+  That connection is READ-ONLY and is used exclusively to pull biometric
+  punch records from the TimeWatch/IDMS hardware device.
+  It is NOT a second HRMS database.
+
+
+2. FRONTEND
+--------------------------------------------------------------------------------
+
+Technology Stack
+  React                18.3.1
+  TypeScript           5.5.3
+  Vite                 5.3.4
+  React Router         v6.24.0
+  Zustand              4.5.4   (state management with localStorage persistence)
+  Axios                1.7.2   (HTTP client, baseURL /api, 15-second timeout)
+  Tailwind CSS         3.4.6
+  Recharts             3.8.1   (charts and analytics)
+  Leaflet 1.9.4 + react-leaflet (GPS map for WFH geo attendance)
+
+Key Files
+  frontend/src/main.tsx              Application entry point
+  frontend/src/routes/index.tsx      React Router configuration
+  frontend/src/api/client.ts         Axios instance with auth interceptor
+  frontend/src/store/authStore.ts    Zustand auth store (persisted)
+  frontend/vite.config.ts            Dev server on port 3000, proxies /api
+                                     and /auth to http://127.0.0.1:8004
+  frontend/nginx.conf                Production Nginx config
+
+Role-Based Routes
+  /login                             Public login page
+  /signup                            Public employee self-registration
+  /employee/signup                   Alias for self-registration
+
+  HR / Admin routes (roles: admin, hr, manager)
+  /hr/dashboard                      HR dashboard
+  /leaves                            Leave management
+  /employees                         Employee directory
+  /documents                         Document generation
+  /attendance                        Attendance overview
+  /analytics                         Analytics
+  /wfh-review                        WFH selfie review queue
+  /wfh-geo-logs                      WFH geo attendance logs
+  /hr/home-location-requests         Home location change requests
+  /biometric/live                    Live biometric attendance feed
+  /hr/unified-attendance             Unified WFO + WFH view
+  /attendance/wfo                    WFO-only attendance view
+  /attendance/wfh                    WFH-only attendance view
+
+  Accountant routes (role: accountant)
+  /accountant/dashboard              Accountant dashboard
+  /accountant/payslips               Payslip generation
+  /accountant/salary-requests        Salary slip request queue
+  /accountant/payroll                Payroll processing
+  /accountant/employees              Employee finance view
+  /accountant/expenses               Expense / reimbursement management
+  /accountant/reports                Financial reports
+  /accountant/settings               Accountant settings
+
+  Employee routes (role: employee)
+  /employee/dashboard                Employee self-service dashboard
+  /employee/leave                    Leave application and history
+  /employee/attendance               Attendance view
+  /employee/profile                  Profile completion
+  /employee/expenses                 Expense submission
+  /employee/documents                Document requests
+  /employee/payslips                 Payslip download
+
+
+3. BACKEND
+--------------------------------------------------------------------------------
+
+Technology Stack
+  Python               3.x
+  FastAPI              0.136.1
+  Uvicorn              0.46.0
+  mysql-connector-python 9.7.0
+  python-docx          (DOCX template manipulation)
+  docx2pdf             (PDF conversion via Microsoft Word COM on Windows)
+  reportlab            (PDF generation fallback)
+  Pillow               12.2.0  (WFH selfie image processing)
+  cryptography         47.0.0  (AES-256-GCM selfie encryption)
+  bcrypt               5.0.0   (password hashing)
+  APScheduler          3.10.0  (background jobs)
+  pyodbc               (biometric SQL Server read-only integration)
+
+Entry Point       : backend/app.py
+Configuration     : backend/config.py  (reads .env via python-dotenv)
+
+Registered Routers (all included in app.py via include_router)
+  biometric_live_router      backend/core/biometric_live_api.py
+  attendance_router          backend/core/attendance_api.py
+  payroll_router             backend/core/payroll_api.py
+  remarks_router             backend/core/remarks_api.py
+  performance_router         backend/core/performance_api.py
+  task_manager_router        backend/core/task_manager_api.py
+  settings_router            backend/core/settings_api.py
+  team_management_router     backend/core/team_management_api.py
+  analytics_router           backend/core/analytics_api.py
+  accountant_router          backend/core/accountant_routes.py
+  employee_router            backend/core/employee_routes.py
+  hr_salary_router           backend/controllers/salary_controller.py
+  payslip_router             backend/controllers/payslip_controller.py
+  wfh_selfie_router          backend/core/wfh_selfie_api.py
+  wfh_geo_router             backend/core/wfh_geo_api.py
+  biometric_router           backend/core/biometric_router.py
+  document_requests_router   backend/core/document_requests_api.py
+
+MVC Pattern (partially migrated)
+  backend/controllers/       Route handlers (salary, payslip)
+  backend/services/          Business logic (salary_service, payslip_service)
+  backend/models/            Data access (db.py, payslip_model.py)
+  backend/core/              Legacy flat modules (pending full MVC migration)
+
+Background Schedulers (started in _startup event)
+  start_scheduler()              Retention cleanup for WFH selfie files
+  start_biometric_scheduler()    Biometric sync polling every 3 seconds
+
+Startup Sequence (_startup event handler)
+  1. _migrate_schema()           Idempotent DDL: virtual columns, new tables
+  2. _ensure_leave_tables()      Leave tables + triggers
+  3. _ensure_announcement_tables() Announcements + notifications tables
+  4. EmployeeProfileSystem()     Profile system singleton
+  5. TicketSystem()              Ticket system singleton
+  6. PayrollAutomation()         Payroll automation singleton
+  7. selfie_storage.ensure_storage_dir()
+  8. start_scheduler()
+  9. start_biometric_scheduler()
+
+
+4. DATABASE
+--------------------------------------------------------------------------------
+
+Engine        : MySQL 8.0
+Database Name : hrms
+Host          : 127.0.0.1 (configurable via DB_HOST in .env)
+Port          : 3306
+
+Core Tables (from hrms_dump.sql — verified against live DB July 2026)
+
+  users
+    Primary key: user_id (VARCHAR 50)
+    Stores login credentials, role, is_active flag
+    Roles: admin, hr, accountant, employee
+
+  user_sessions
+    Active session tracking per user
+
+  employees
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: employee_code (e.g. EMP0001)
+    Virtual columns: employee_id, first_name, last_name, name, date_of_joining
+    Real columns: full_name, email, phone, department, title, joining_date,
+                  status, biometric_enroll_id, default_work_mode
+
+  employee_profiles
+    Primary key: employee_id (VARCHAR 50)
+    KYC data: aadhaar, PAN, bank details, document paths
+
+  employee_salaries
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: (employee_id, effective_from)
+    Stores CTC breakdown: basic, HRA, DA, allowances, deductions, net
+
+  salary_structure
+    Salary component definitions used by payroll engine
+
+  salary_templates
+    Salary component percentage templates
+
+  monthly_payroll
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: (employee_id, month_year)
+    Stores computed monthly payroll: gross, deductions, net, status
+
+  bonuses
+    One-off bonus records per employee
+
+  attendance
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: (employee_id, date)
+    Columns: check_in, check_out, status, late_minutes, early_minutes,
+             beyond_grace, overtime_minutes, check_in_source
+
+  attendance_deductions
+    Computed deduction records from late/absent attendance events
+
+  attendance_regularization
+    Attendance correction requests
+
+  wfh_attendance
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: (employee_id, DATE(punch_in_at))
+    Columns: punch_in_at, punch_out_at, duration_minutes, idempotency_key,
+             status, attendance_method (SELFIE/GEO), geo_latitude,
+             geo_longitude, geo_distance_meters
+
+  attendance_selfies
+    Selfie metadata (encrypted files stored on disk, not in DB)
+
+  selfie_access_log
+    Audit log of selfie file access events
+
+  leave_requests
+    Primary key: id (INT AUTO_INCREMENT)
+    Columns: employee_id, leave_type, start_date, end_date, days_count,
+             reason, status, approved_by, is_unpaid, unpaid_days,
+             paid_leave_days, leave_duration
+    Triggers: leave_requests_days_count_bi, leave_requests_days_count_bu
+              (auto-calculate days_count on INSERT/UPDATE)
+
+  leave_balance
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: employee_id
+    Columns: casual_leave, sick_leave, earned_leave (DECIMAL 5,2)
+
+  leave_ledger
+    Detailed ledger of all leave balance credit/debit transactions
+
+  document_requests
+    Primary key: id (INT AUTO_INCREMENT)
+    Columns: employee_id, employee_name, document_type, reason, status,
+             file_url, file_html, rejected_reason, requested_month,
+             hr_approved_by, hr_forwarded_at
+    Status values: pending, hr_approved, approved, rejected, generated
+
+  announcements
+    Primary key: id (INT AUTO_INCREMENT)
+    Columns: title, message, created_by, creator_name, creator_role, is_active
+
+  notifications
+    Primary key: id (INT AUTO_INCREMENT)
+    Columns: user_id, title, message, type, is_read
+
+  departments
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: name
+
+  designations
+    Job title / designation master list
+
+  reimbursements
+    Primary key: id (INT AUTO_INCREMENT)
+    Columns: employee_id, category, amount, description, status,
+             expense_date, reviewed_by
+
+  biometric_employee_map
+    Maps biometric enroll_id to employee_code
+
+  biometric_raw_logs
+    Raw punch records pulled from TimeWatch/IDMS SQL Server
+
+  biometric_sync_log
+    Log of each biometric sync cycle (timestamp, records pulled, errors)
+
+  biometric_missing_punches
+    Flagged records where check-in or check-out punch is absent
+
+  biometric_userinfo
+    Employee metadata mirrored from the IDMS biometric device
+
+  daily_work_mode
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: (employee_id, work_date)
+    Columns: mode (WFO/WFH), biometric_user_id, status
+
+  monthly_late_summary
+    Aggregated late-arrival counts per employee per month
+
+  employee_home_locations
+    Primary key: id (INT AUTO_INCREMENT)
+    Unique: employee_id
+    Columns: latitude, longitude, address_label, registered_via
+
+  employee_home_location_audit
+    Audit trail of all home location changes
+
+  home_location_change_requests
+    Employee-submitted requests to update registered home location
+
+  geo_attendance_attempts
+    Logs every GPS attendance attempt (success and failure)
+
+  wfh_system_config
+    Key-value config: wfh_geo_radius_meters, selfie_retention_months, etc.
+
+  tax_slabs
+    Income tax slab configuration by financial year
+
+  accountant_settings
+    Accountant panel configuration (company name, pay day, etc.)
+
+  company_settings
+    Global company-level configuration (name, logo, address, etc.)
+
+  login_history, admin_activity_logs, employee_activity_logs
+    Audit and activity logs
+
+  performance_cycles, kpis, self_reviews, manager_reviews
+    Performance management tables
+
+  teams, team_members
+    Team management tables
+
+  holidays
+    Company holiday calendar
+
+  NOTE: tasks table is NOT present in the live database.
+        task_manager_api.py creates it dynamically via _migrate_schema().
+
+
+5. AUTHENTICATION
+--------------------------------------------------------------------------------
+
+Login Flow
+  Step 1: POST /api/auth/login
+          Validates username + password
+          Supports bcrypt hashed passwords (new accounts, $2b$ prefix)
+          Supports legacy plain-text passwords (admin001, hr001, acc001)
+          Returns: { success, requires_otp: true, otp: "6-digit string" }
+
+  Step 2: POST /api/auth/verify-otp
+          Accepts any 6-digit OTP (server-side: accepts any valid 6-digit code)
+          Returns: { success, token, user: { user_id, username, email,
+                    full_name, role, profile_completed } }
+
+  Step 3: Frontend stores user object in localStorage key "hrms_user"
+          via Zustand persist middleware
+
+  Step 4: All API calls include Authorization header with token value
+          Axios interceptor reads from localStorage("hrms_user")
+          401 responses redirect to /login
+
+Token Format: "token_{user_id}"  (simple string, not JWT)
+
+Role Permissions
+  admin       Full access: all HR, admin, employee, and accountant functions
+  hr          HR management: employees, leave approval, document generation,
+              attendance management, announcements
+  accountant  Finance only: payroll, salary slip generation, expenses,
+              reimbursements, financial reports
+  employee    Self-service: own attendance, own leave, own documents,
+              own payslips, own profile, own expenses
+
+
+6. MODULES
+--------------------------------------------------------------------------------
+
+Authentication Module
+  Employee self-registration with work mode commitment (WFO/WFH)
+  Biometric enroll_id registered at signup for WFO employees
+  OTP-based two-step login
+  Role-based dashboard redirect after login
+
+Employee Module
+  Employee creation by HR/Admin
+  Employee profile completion (KYC, bank details, uploaded documents)
+  Employee directory with search and department grouping
+  Employee status management (active/inactive)
+
+Attendance Module
+  WFO employees: biometric machine integration
+    - Biometric enroll_id registered at onboarding
+    - TimeWatch/IDMS SQL Server polled every 3 seconds
+    - Punch data synced to attendance table
+    - Live attendance feed for HR
+  WFH employees: selfie + GPS
+    - Selfie captured in browser, AES-256-GCM encrypted, stored on disk
+    - GPS coordinates validated against registered home location
+    - Configurable geo-fence radius (default 500m)
+    - Home location registration and HR-approved change request workflow
+  Work mode committed ONCE at signup (default_work_mode column)
+  Daily work mode row auto-created when employee visits attendance page
+  Late arrival tracking:
+    - beyond_grace flag set if check_in > 09:45
+    - Deduction triggered after 3 late-beyond-grace days in a month
+    - Deduction = half-day salary per set of 3 late days
+
+Leave Module
+  Employee applies for leave (full day, first half, second half)
+  HR approves or rejects with comments
+  On approval: paid days deducted from leave_balance first,
+               remaining days marked as unpaid
+  Payroll row refreshed immediately on approval
+  Leave balance display with casual, sick, earned breakdown
+  Leave calendar view
+  Notification sent to all HR/Admin on new leave request
+
+Document Module
+  Employee submits document request (offer letter, experience letter,
+  relieving letter, appointment letter, salary slip)
+  HR reviews all requests
+  For non-salary-slip: HR approves and generates PDF using official template
+  For salary slip: HR approves and forwards to Accountant
+  Accountant generates salary slip PDF (HR cannot generate salary slips)
+  All documents use official Seawind Solution DOCX templates from
+  backend/templates/templates/
+  Generated PDFs stored in generated_docs/
+  Documents visible only to the requesting employee
+
+Salary / Payroll Module
+  HR manages salary structures via /api/hr/salary (CTC breakdown)
+  Canonical payroll formula (payroll_engine.py):
+    net = gross - PT(200) - leave_deduction
+    leave_deduction = (gross / total_days_in_month) * unpaid_days
+  Accountant views and processes payroll via /api/accountant/payroll
+  Payslip HTML preview via /api/payslip/
+  Salary slip PDF generation via official template (Accountant only)
+
+Task Management Module
+  Kanban board with To Do, In Progress, Done columns
+  Task assignment by HR/Admin to employees
+  Task performance metrics: completion rate, on-time rate, weighted score
+
+Analytics Module
+  Employee count and department distribution
+  Attendance rate and leave statistics
+  Role distribution, active/inactive user counts
+
+Announcements Module
+  HR/Admin posts announcements
+  Fan-out: one notification row created per active user
+
+Reports Module
+  Employee summary, department, payroll, attendance, leave, performance
+
+
+7. FOLDER STRUCTURE
+--------------------------------------------------------------------------------
+
+hrms_agent/
+  .env                              Environment variables
+  docs/                             Generated documentation (this folder)
+  backend/
+    app.py                          Main FastAPI application
+    config.py                       DB_CONFIG loader
+    requirements.txt                Python dependencies
+    core/                           Legacy flat modules
+      attendance_api.py
+      accountant_routes.py
+      analytics_api.py
+      biometric_live_api.py
+      biometric_router.py
+      biometric_sync.py
+      document_requests_api.py
+      employee_routes.py
+      experience_letter_generator.py
+      leave_accounting.py
+      offer_letter_generator.py
+      payroll_api.py
+      payroll_automation.py
+      payroll_engine.py
+      performance_api.py
+      relieving_letter_generator.py
+      remarks_api.py
+      retention_scheduler.py
+      salary_calculator.py
+      salary_slip_generator.py
+      selfie_storage.py
+      settings_api.py
+      task_manager_api.py
+      team_management_api.py
+      wfh_geo_api.py
+      wfh_selfie_api.py
+    controllers/
+      payslip_controller.py
+      salary_controller.py
+    models/
+      db.py
+      payslip_model.py
+    services/
+      payslip_service.py
+      salary_service.py
+    sql/sql/
+      hrms_dump.sql                 Full MySQL schema + seed data (regenerated July 2026)
+      (+ 21 migration scripts)
+    templates/templates/
+      Salary Slip New.docx
+      appointment_letter_template.docx
+      experience_letter_template.docx
+      offer_letter_template.docx
+      relieving_letter_template.docx
+  frontend/
+    src/
+      api/
+        client.ts
+        auth.ts
+        documents.ts
+      components/
+      pages/
+        employee/
+        accountant/
+      routes/index.tsx
+      store/authStore.ts
+    vite.config.ts
+    package.json
+    nginx.conf
+  generated_docs/                   PDF output directory
+  wfh_selfies/                      Encrypted WFH selfie storage
+  employee_data/                    Employee uploaded documents
+
+================================================================================
+END OF PROJECT OVERVIEW
+================================================================================

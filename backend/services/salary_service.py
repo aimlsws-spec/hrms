@@ -30,6 +30,9 @@ def list_salaries() -> list:
             "name":                r["name"],
             "department":          r["department"] or "N/A",
             "has_salary":          r["salary_id"] is not None,
+            "joined_on":           r["joined_on"].isoformat() if r.get("joined_on") else None,
+            "work_mode":           r.get("work_mode"),
+            "designation":         r.get("designation") or "",
             "ctc":                 _safe_float(r["ctc"]),
             "basic_salary":        _safe_float(r["basic_salary"]),
             "hra":                 _safe_float(r["hra"]),
@@ -136,6 +139,9 @@ def set_salary(data: dict) -> dict:
             "professional_tax": professional_tax, "income_tax": income_tax,
             "total_deductions": total_deductions, "net_salary": net_salary,
         }, effective_from)
+        designation = (data.get("designation") or "").strip()
+        if designation:
+            salary_model.update_designation(emp_id, designation[:100])
         return {"success": True}
     except Exception as ex:
         return {"success": False, "message": str(ex)}

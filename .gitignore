@@ -8,6 +8,8 @@ wfh_selfies/
 
 # Python virtual environment
 .venv/
+venv/
+venv_new/
 __pycache__/
 *.pyc
 *.pyo
@@ -17,12 +19,46 @@ dist/
 build/
 *.egg
 
+# Backups and deployment artifacts
+backups/
+deploy_pack/
+
+# Temporary test scripts and office lock files
+patch.py
+startup.txt
+test_convert.*
+test_indent.*
+test_relieving.*
+~$*
+
 # Generated documents (PDFs, salary slips)
 generated_docs/
+backend/generated_docs/
 
-# Frontend build output
+# Sensitive employee data (photos, Aadhaar, PAN, etc.)
+backend/employee_data/
+
+# Database dumps/backups — contain real employee PII (names, phone, salary, Aadhaar/PAN schema)
+*.sql
+sql.zip
+db_metadata.json
+
+# Deployment packages — backend zip contains a real .env (DB/IDMS credentials, selfie encryption key)
+hrms_backend_deploy.zip
+hrms_frontend_deploy.zip
+
+# Trash / cleanup folders
+_trash_*/
+backend/_trash/
+
+# Frontend build output & dependencies
+frontend/dist/
+frontend/node_modules/
 frontend-react/dist/
 frontend-react/node_modules/
+
+# Log files
+*.log
 
 # IDE / OS
 .DS_Store

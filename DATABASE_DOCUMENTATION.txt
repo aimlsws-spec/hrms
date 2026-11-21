@@ -1,0 +1,1310 @@
+=========================================================
+DATABASE DOCUMENTATION
+=========================================================
+
+Database Name: hrms
+Character Set: utf8mb4
+Collation: utf8mb4_general_ci
+MySQL Version: 8.0.x
+
+--- TABLE LIST ---
+- accountant_settings
+- admin_activity_logs
+- announcements
+- attendance
+- attendance_deductions
+- attendance_regularization
+- attendance_selfies
+- biometric_employee_map
+- biometric_missing_punches
+- biometric_raw_logs
+- biometric_sync_log
+- biometric_userinfo
+- bonuses
+- company_settings
+- daily_work_mode
+- departments
+- designations
+- document_requests
+- employee_activity_logs
+- employee_home_location_audit
+- employee_home_locations
+- employee_profiles
+- employee_salaries
+- employees
+- geo_attendance_attempts
+- holidays
+- home_location_change_requests
+- kpis
+- leave_balance
+- leave_ledger
+- leave_requests
+- login_history
+- manager_reviews
+- monthly_late_summary
+- monthly_payroll
+- notifications
+- performance_cycles
+- reimbursements
+- salary_structure
+- salary_templates
+- self_reviews
+- selfie_access_log
+- tax_slabs
+- team_members
+- teams
+- user_sessions
+- users
+- wfh_attendance
+- wfh_system_config
+
+=========================================================
+TABLE DETAILS
+=========================================================
+
+Table: accountant_settings
+Purpose: Stores data for accountant settings
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - company_name | varchar(200) | Nullable: NO
+  - fiscal_year_start | varchar(20) | Nullable: NO
+  - currency | varchar(10) | Nullable: NO
+  - payroll_cycle | varchar(20) | Nullable: NO
+  - pay_day | varchar(10) | Nullable: NO
+  - notify_payroll_processed | tinyint(1) | Nullable: NO
+  - notify_expense_requests | tinyint(1) | Nullable: NO
+  - created_at | timestamp | Nullable: YES
+  - updated_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Accountant Management
+--------------------------------------------------
+
+Table: admin_activity_logs
+Purpose: Stores data for admin activity logs
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - admin_id | varchar(50) | Nullable: NO
+  - action | varchar(200) | Nullable: NO
+  - details | text | Nullable: YES
+  - ip_address | varchar(50) | Nullable: YES
+  - timestamp | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_admin on admin_id (Unique: False)
+  - idx_timestamp on timestamp (Unique: False)
+
+Modules Using Table:
+  - Admin Management
+--------------------------------------------------
+
+Table: announcements
+Purpose: Stores data for announcements
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - title | varchar(255) | Nullable: NO
+  - message | text | Nullable: NO
+  - created_by | varchar(50) | Nullable: NO
+  - creator_name | varchar(150) | Nullable: YES
+  - creator_role | varchar(50) | Nullable: YES
+  - is_active | tinyint(1) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_active_created on is_active (Unique: False)
+  - idx_active_created on created_at (Unique: False)
+
+Modules Using Table:
+  - Announcements Management
+--------------------------------------------------
+
+Table: attendance
+Purpose: Stores data for attendance
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - date | date | Nullable: NO
+  - status | varchar(20) | Nullable: NO
+  - check_in | time | Nullable: YES
+  - check_out | time | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+  - late_minutes | int | Nullable: NO
+  - overtime_minutes | int | Nullable: NO
+  - early_minutes | int | Nullable: NO
+  - beyond_grace | tinyint | Nullable: NO
+  - source | varchar(20) | Nullable: NO
+  - biometric_log_id | bigint | Nullable: YES
+  - is_late | tinyint(1) | Nullable: NO
+  - late_flagged_at | datetime | Nullable: YES
+  - check_in_source | varchar(20) | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - unique_attendance on employee_id (Unique: True)
+  - unique_attendance on date (Unique: True)
+  - uq_emp_date on employee_id (Unique: True)
+  - uq_emp_date on date (Unique: True)
+  - idx_employee_date on employee_id (Unique: False)
+  - idx_employee_date on date (Unique: False)
+  - idx_source on source (Unique: False)
+  - idx_bio_log on biometric_log_id (Unique: False)
+
+Modules Using Table:
+  - Attendance Management
+--------------------------------------------------
+
+Table: attendance_deductions
+Purpose: Stores data for attendance deductions
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - year | smallint | Nullable: NO
+  - month | tinyint | Nullable: NO
+  - deduction_type | varchar(50) | Nullable: NO
+  - late_count | tinyint | Nullable: NO
+  - half_days_deducted | tinyint | Nullable: NO
+  - amount | decimal(10,2) | Nullable: NO
+  - payroll_processed | tinyint(1) | Nullable: NO
+  - updated_at | datetime | Nullable: NO
+  - created_at | datetime | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_emp_ym_type on employee_id (Unique: True)
+  - uq_emp_ym_type on year (Unique: True)
+  - uq_emp_ym_type on month (Unique: True)
+  - uq_emp_ym_type on deduction_type (Unique: True)
+  - idx_ym on year (Unique: False)
+  - idx_ym on month (Unique: False)
+  - idx_payroll on payroll_processed (Unique: False)
+
+Modules Using Table:
+  - Attendance Management
+--------------------------------------------------
+
+Table: attendance_regularization
+Purpose: Stores data for attendance regularization
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - attendance_date | date | Nullable: NO
+  - original_check_in | time | Nullable: YES
+  - original_check_out | time | Nullable: YES
+  - requested_check_in | time | Nullable: NO
+  - requested_check_out | time | Nullable: NO
+  - reason | text | Nullable: NO
+  - status | enum('Pending','Approved','Rejected') | Nullable: YES
+  - approved_by | varchar(100) | Nullable: YES
+  - approval_comments | text | Nullable: YES
+  - approved_at | timestamp | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+  - idx_status on status (Unique: False)
+  - idx_date on attendance_date (Unique: False)
+
+Modules Using Table:
+  - Attendance Management
+--------------------------------------------------
+
+Table: attendance_selfies
+Purpose: Stores data for attendance selfies
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - wfh_attendance_id | int | Nullable: NO
+  - capture_type | enum('checkin','checkout') | Nullable: NO
+  - storage_key | char(36) | Nullable: NO
+  - storage_backend | enum('local_encrypted') | Nullable: NO
+  - file_hash | char(64) | Nullable: NO
+  - mime_type | varchar(30) | Nullable: NO
+  - file_size_bytes | int unsigned | Nullable: NO
+  - width_px | smallint unsigned | Nullable: NO
+  - height_px | smallint unsigned | Nullable: NO
+  - camera_device_label | varchar(200) | Nullable: YES
+  - capture_attempt_count | tinyint unsigned | Nullable: NO
+  - captured_at | timestamp | Nullable: NO
+  - uploaded_at | timestamp | Nullable: NO
+  - retention_expires_at | date | Nullable: NO
+  - status | enum('active','deletion_pending','deleted') | Nullable: NO
+  - deleted_at | timestamp | Nullable: YES
+  - deletion_reason | enum('retention_expired','consent_withdrawn','hr_request','employee_request','system_error') | Nullable: YES
+  - created_at | timestamp | Nullable: NO
+  - updated_at | timestamp | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_wfh_capture on wfh_attendance_id (Unique: True)
+  - uq_wfh_capture on capture_type (Unique: True)
+  - uq_storage_key on storage_key (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+  - idx_status on status (Unique: False)
+  - idx_retention on retention_expires_at (Unique: False)
+  - idx_retention on status (Unique: False)
+  - idx_captured_at on captured_at (Unique: False)
+
+Foreign Keys & Relationships:
+  - wfh_attendance_id references wfh_attendance(id)
+
+Modules Using Table:
+  - Attendance Management
+--------------------------------------------------
+
+Table: biometric_employee_map
+Purpose: Stores data for biometric employee map
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - enroll_id | varchar(50) | Nullable: NO
+  - device_id | varchar(50) | Nullable: NO
+  - employee_id | varchar(20) | Nullable: NO
+  - is_active | tinyint(1) | Nullable: NO
+  - mapped_by | varchar(50) | Nullable: YES
+  - mapped_at | datetime | Nullable: NO
+  - notes | varchar(255) | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_map on enroll_id (Unique: True)
+  - uq_map on device_id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+  - idx_active on is_active (Unique: False)
+
+Modules Using Table:
+  - Biometric Management
+--------------------------------------------------
+
+Table: biometric_missing_punches
+Purpose: Stores data for biometric missing punches
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(20) | Nullable: NO
+  - punch_date | date | Nullable: NO
+  - missing_type | enum('IN','OUT') | Nullable: NO
+  - available_punch | datetime | Nullable: YES
+  - resolved | tinyint(1) | Nullable: NO
+  - resolved_by | varchar(50) | Nullable: YES
+  - resolved_at | datetime | Nullable: YES
+  - resolution_note | varchar(255) | Nullable: YES
+  - created_at | datetime | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_missing on employee_id (Unique: True)
+  - uq_missing on punch_date (Unique: True)
+  - idx_unresolved on resolved (Unique: False)
+  - idx_unresolved on punch_date (Unique: False)
+  - idx_employee on employee_id (Unique: False)
+
+Modules Using Table:
+  - Biometric Management
+--------------------------------------------------
+
+Table: biometric_raw_logs
+Purpose: Stores data for biometric raw logs
+
+Columns:
+  - id | bigint | Nullable: NO (PRIMARY KEY)
+  - enroll_id | varchar(50) | Nullable: NO
+  - device_id | varchar(50) | Nullable: NO
+  - punch_time | datetime | Nullable: NO
+  - punch_type | enum('IN','OUT','UNKNOWN') | Nullable: NO
+  - raw_payload | json | Nullable: YES
+  - source | varchar(30) | Nullable: NO
+  - synced_at | datetime | Nullable: NO
+  - is_processed | tinyint(1) | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_punch on enroll_id (Unique: True)
+  - uq_punch on device_id (Unique: True)
+  - uq_punch on punch_time (Unique: True)
+  - idx_enroll on enroll_id (Unique: False)
+  - idx_device on device_id (Unique: False)
+  - idx_pending on is_processed (Unique: False)
+  - idx_pending on punch_time (Unique: False)
+
+Modules Using Table:
+  - Biometric Management
+--------------------------------------------------
+
+Table: biometric_sync_log
+Purpose: Stores data for biometric sync log
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - device_id | varchar(50) | Nullable: NO
+  - sync_start | datetime | Nullable: NO
+  - sync_end | datetime | Nullable: YES
+  - records_fetched | int | Nullable: NO
+  - records_new | int | Nullable: NO
+  - status | enum('RUNNING','SUCCESS','FAILED') | Nullable: NO
+  - error_detail | text | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_sync on device_id (Unique: True)
+  - uq_sync on sync_start (Unique: True)
+  - idx_status on status (Unique: False)
+  - idx_status on sync_start (Unique: False)
+
+Modules Using Table:
+  - Biometric Management
+--------------------------------------------------
+
+Table: biometric_userinfo
+Purpose: Stores data for biometric userinfo
+
+Columns:
+  - enroll_id | varchar(50) | Nullable: NO (PRIMARY KEY)
+  - user_name | varchar(100) | Nullable: NO
+  - device_id | varchar(50) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+  - updated_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on enroll_id (Unique: True)
+
+Modules Using Table:
+  - Biometric Management
+--------------------------------------------------
+
+Table: bonuses
+Purpose: Stores data for bonuses
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - amount | decimal(10,2) | Nullable: NO
+  - bonus_type | varchar(50) | Nullable: NO
+  - reason | text | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+
+Modules Using Table:
+  - Bonuses Management
+--------------------------------------------------
+
+Table: company_settings
+Purpose: Stores data for company settings
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - setting_key | varchar(100) | Nullable: NO
+  - setting_value | text | Nullable: YES
+  - updated_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - setting_key on setting_key (Unique: True)
+
+Modules Using Table:
+  - Company Management
+--------------------------------------------------
+
+Table: daily_work_mode
+Purpose: Stores data for daily work mode
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - work_date | date | Nullable: NO
+  - mode | enum('WFO','WFH') | Nullable: NO
+  - biometric_user_id | varchar(50) | Nullable: YES
+  - checked_in_at | datetime | Nullable: YES
+  - check_in_method | enum('BIOMETRIC','MANUAL') | Nullable: YES
+  - status | enum('PENDING','PRESENT','ABSENT') | Nullable: NO
+  - notes | text | Nullable: YES
+  - created_at | datetime | Nullable: NO
+  - updated_at | datetime | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_emp_date on employee_id (Unique: True)
+  - uq_emp_date on work_date (Unique: True)
+  - idx_date on work_date (Unique: False)
+  - idx_mode on mode (Unique: False)
+
+Modules Using Table:
+  - Daily Management
+--------------------------------------------------
+
+Table: departments
+Purpose: Stores data for departments
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - name | varchar(100) | Nullable: NO
+  - description | text | Nullable: YES
+  - head_id | varchar(50) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - name on name (Unique: True)
+
+Modules Using Table:
+  - Departments Management
+--------------------------------------------------
+
+Table: designations
+Purpose: Stores data for designations
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - title | varchar(100) | Nullable: NO
+  - department_id | int | Nullable: YES
+  - level | varchar(50) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - department_id on department_id (Unique: False)
+
+Foreign Keys & Relationships:
+  - department_id references departments(id)
+
+Modules Using Table:
+  - Designations Management
+--------------------------------------------------
+
+Table: document_requests
+Purpose: Stores data for document requests
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - employee_name | varchar(100) | Nullable: YES
+  - document_type | varchar(50) | Nullable: NO
+  - reason | text | Nullable: YES
+  - status | varchar(20) | Nullable: NO
+  - file_url | varchar(500) | Nullable: YES
+  - file_html | longtext | Nullable: YES
+  - rejected_reason | text | Nullable: YES
+  - created_at | timestamp | Nullable: NO
+  - updated_at | timestamp | Nullable: NO
+  - requested_month | varchar(7) | Nullable: YES
+  - hr_approved_by | varchar(100) | Nullable: YES
+  - hr_forwarded_at | datetime | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Document Management
+--------------------------------------------------
+
+Table: employee_activity_logs
+Purpose: Stores data for employee activity logs
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - action | varchar(200) | Nullable: NO
+  - details | text | Nullable: YES
+  - ip_address | varchar(50) | Nullable: YES
+  - timestamp | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+  - idx_timestamp on timestamp (Unique: False)
+
+Modules Using Table:
+  - Employee Management
+--------------------------------------------------
+
+Table: employee_home_location_audit
+Purpose: Stores data for employee home location audit
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - latitude | decimal(10,8) | Nullable: NO
+  - longitude | decimal(11,8) | Nullable: NO
+  - address_label | varchar(500) | Nullable: YES
+  - registered_via | enum('employee_gps','hr_manual','geocoded') | Nullable: NO
+  - changed_by | varchar(50) | Nullable: NO
+  - changed_at | timestamp | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_emp on employee_id (Unique: False)
+  - idx_changed_at on changed_at (Unique: False)
+
+Modules Using Table:
+  - Employee Management
+--------------------------------------------------
+
+Table: employee_home_locations
+Purpose: Stores data for employee home locations
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - latitude | decimal(10,8) | Nullable: NO
+  - longitude | decimal(11,8) | Nullable: NO
+  - address_label | varchar(500) | Nullable: YES
+  - registered_via | enum('employee_gps','hr_manual','geocoded') | Nullable: NO
+  - updated_by | varchar(50) | Nullable: YES
+  - created_at | timestamp | Nullable: NO
+  - updated_at | timestamp | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_employee on employee_id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+
+Modules Using Table:
+  - Employee Management
+--------------------------------------------------
+
+Table: employee_profiles
+Purpose: Stores data for employee profiles
+
+Columns:
+  - employee_id | varchar(50) | Nullable: NO (PRIMARY KEY)
+  - profile_completed | tinyint(1) | Nullable: YES
+  - fathers_spouse_name | varchar(255) | Nullable: YES
+  - date_of_birth | date | Nullable: YES
+  - gender | enum('Male','Female','Other') | Nullable: YES
+  - marital_status | enum('Single','Married','Divorced','Widowed') | Nullable: YES
+  - nationality | varchar(100) | Nullable: YES
+  - photograph_path | varchar(500) | Nullable: YES
+  - current_address | text | Nullable: YES
+  - permanent_address | text | Nullable: YES
+  - alternate_mobile | varchar(20) | Nullable: YES
+  - alternate_phone | varchar(20) | Nullable: YES
+  - emergency_number | varchar(20) | Nullable: YES
+  - aadhaar_number | varchar(20) | Nullable: YES
+  - aadhaar_image_path | varchar(500) | Nullable: YES
+  - pan_number | varchar(20) | Nullable: YES
+  - pan_image_path | varchar(500) | Nullable: YES
+  - uan_number | varchar(50) | Nullable: YES
+  - highest_qualification | varchar(255) | Nullable: YES
+  - degree_certificates_path | varchar(500) | Nullable: YES
+  - university_name | varchar(255) | Nullable: YES
+  - year_of_passing | int | Nullable: YES
+  - is_fresher | tinyint(1) | Nullable: YES
+  - experience_letters_path | varchar(500) | Nullable: YES
+  - relieving_letter_path | varchar(500) | Nullable: YES
+  - bank_name | varchar(255) | Nullable: YES
+  - account_holder_name | varchar(255) | Nullable: YES
+  - account_number | varchar(50) | Nullable: YES
+  - ifsc_code | varchar(20) | Nullable: YES
+  - branch_name | varchar(255) | Nullable: YES
+  - signature_path | varchar(500) | Nullable: YES
+  - appointment_letter_path | varchar(500) | Nullable: YES
+  - nda_agreement_path | varchar(500) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+  - updated_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on employee_id (Unique: True)
+
+Modules Using Table:
+  - Employee Management
+--------------------------------------------------
+
+Table: employee_salaries
+Purpose: Stores data for employee salaries
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - ctc | decimal(12,2) | Nullable: NO
+  - basic_salary | decimal(12,2) | Nullable: YES
+  - hra | decimal(12,2) | Nullable: YES
+  - da | decimal(12,2) | Nullable: YES
+  - transport_allowance | decimal(10,2) | Nullable: YES
+  - medical_allowance | decimal(10,2) | Nullable: YES
+  - special_allowance | decimal(12,2) | Nullable: YES
+  - gross_salary | decimal(12,2) | Nullable: YES
+  - pf_deduction | decimal(10,2) | Nullable: YES
+  - esi_deduction | decimal(10,2) | Nullable: YES
+  - professional_tax | decimal(10,2) | Nullable: YES
+  - income_tax | decimal(10,2) | Nullable: YES
+  - total_deductions | decimal(12,2) | Nullable: YES
+  - net_salary | decimal(12,2) | Nullable: YES
+  - effective_from | date | Nullable: YES
+  - status | enum('pending','approved','active','revised') | Nullable: YES
+  - approved_by | varchar(50) | Nullable: YES
+  - approved_at | timestamp | Nullable: YES
+  - created_by | varchar(50) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - unique_emp_effective on employee_id (Unique: True)
+  - unique_emp_effective on effective_from (Unique: True)
+
+Modules Using Table:
+  - Employee Management
+--------------------------------------------------
+
+Table: employees
+Purpose: Stores data for employees
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_code | varchar(50) | Nullable: YES
+  - full_name | varchar(100) | Nullable: NO
+  - email | varchar(100) | Nullable: YES
+  - phone | varchar(20) | Nullable: YES
+  - department_id | int | Nullable: YES
+  - designation_id | int | Nullable: YES
+  - reporting_manager | varchar(100) | Nullable: YES
+  - joining_date | date | Nullable: YES
+  - status | varchar(20) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+  - reporting_manager_id | int | Nullable: YES
+  - employee_id | varchar(50) | Nullable: YES
+  - first_name | varchar(100) | Nullable: YES
+  - last_name | varchar(100) | Nullable: YES
+  - name | varchar(100) | Nullable: YES
+  - date_of_joining | date | Nullable: YES
+  - department | varchar(100) | Nullable: YES
+  - title | varchar(100) | Nullable: YES
+  - city | varchar(100) | Nullable: YES
+  - state | varchar(100) | Nullable: YES
+  - biometric_enroll_id | varchar(50) | Nullable: YES
+  - default_work_mode | enum('WFO','WFH') | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - employee_code on employee_code (Unique: True)
+  - email on email (Unique: True)
+  - department_id on department_id (Unique: False)
+
+Foreign Keys & Relationships:
+  - department_id references departments(id)
+
+Modules Using Table:
+  - Employees Management
+--------------------------------------------------
+
+Table: geo_attendance_attempts
+Purpose: Stores data for geo attendance attempts
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - attempted_at | timestamp | Nullable: NO
+  - latitude | decimal(10,8) | Nullable: NO
+  - longitude | decimal(11,8) | Nullable: NO
+  - home_latitude | decimal(10,8) | Nullable: YES
+  - home_longitude | decimal(11,8) | Nullable: YES
+  - distance_meters | decimal(10,2) | Nullable: YES
+  - radius_meters | int | Nullable: NO
+  - within_radius | tinyint(1) | Nullable: NO
+  - wfh_id | int | Nullable: YES
+  - client_ip | varchar(45) | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+  - idx_attempted_at on attempted_at (Unique: False)
+  - idx_within_radius on within_radius (Unique: False)
+
+Modules Using Table:
+  - Geo Management
+--------------------------------------------------
+
+Table: holidays
+Purpose: Stores data for holidays
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - date | date | Nullable: NO
+  - name | varchar(100) | Nullable: NO
+  - description | text | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - date on date (Unique: True)
+
+Modules Using Table:
+  - Holidays Management
+--------------------------------------------------
+
+Table: home_location_change_requests
+Purpose: Stores data for home location change requests
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - requested_latitude | decimal(10,8) | Nullable: NO
+  - requested_longitude | decimal(11,8) | Nullable: NO
+  - requested_address_label | varchar(500) | Nullable: YES
+  - request_reason | varchar(500) | Nullable: YES
+  - status | enum('pending','approved','rejected') | Nullable: NO
+  - hr_comment | varchar(500) | Nullable: YES
+  - reviewed_by | varchar(50) | Nullable: YES
+  - reviewed_at | timestamp | Nullable: YES
+  - created_at | timestamp | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_emp_status on employee_id (Unique: False)
+  - idx_emp_status on status (Unique: False)
+  - idx_status on status (Unique: False)
+  - idx_created on created_at (Unique: False)
+
+Modules Using Table:
+  - Home Management
+--------------------------------------------------
+
+Table: kpis
+Purpose: Stores data for kpis
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - cycle_id | int | Nullable: NO
+  - kpi_name | varchar(200) | Nullable: NO
+  - target | text | Nullable: YES
+  - weightage | decimal(5,2) | Nullable: YES
+  - achievement | decimal(5,2) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - cycle_id on cycle_id (Unique: False)
+  - idx_employee_cycle on employee_id (Unique: False)
+  - idx_employee_cycle on cycle_id (Unique: False)
+
+Foreign Keys & Relationships:
+  - cycle_id references performance_cycles(id)
+
+Modules Using Table:
+  - Kpis Management
+--------------------------------------------------
+
+Table: leave_balance
+Purpose: Stores data for leave balance
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - casual_leave | decimal(5,2) | Nullable: YES
+  - sick_leave | decimal(5,2) | Nullable: YES
+  - earned_leave | decimal(5,2) | Nullable: YES
+  - updated_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - employee_id on employee_id (Unique: True)
+
+Modules Using Table:
+  - Leave Management
+--------------------------------------------------
+
+Table: leave_ledger
+Purpose: Stores data for leave ledger
+
+Columns:
+  - id | bigint | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - period | char(7) | Nullable: NO
+  - leave_type | enum('SL','CL','PL') | Nullable: NO
+  - transaction_type | enum('OPENING','MONTHLY_CREDIT','DEBIT','ADJUSTMENT') | Nullable: NO
+  - days | decimal(6,2) | Nullable: NO
+  - balance_after | decimal(6,2) | Nullable: NO
+  - reference_type | varchar(50) | Nullable: YES
+  - reference_id | varchar(50) | Nullable: YES
+  - idempotency_key | varchar(120) | Nullable: NO
+  - remarks | text | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_leave_ledger_idempotency on idempotency_key (Unique: True)
+  - idx_employee_period on employee_id (Unique: False)
+  - idx_employee_period on period (Unique: False)
+  - idx_reference on reference_type (Unique: False)
+  - idx_reference on reference_id (Unique: False)
+
+Modules Using Table:
+  - Leave Management
+--------------------------------------------------
+
+Table: leave_requests
+Purpose: Stores data for leave requests
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - leave_type | varchar(50) | Nullable: NO
+  - start_date | date | Nullable: NO
+  - end_date | date | Nullable: NO
+  - days_count | decimal(5,2) | Nullable: NO
+  - reason | text | Nullable: YES
+  - status | varchar(20) | Nullable: YES
+  - approved_by | varchar(50) | Nullable: YES
+  - approved_at | timestamp | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+  - applied_at | timestamp | Nullable: YES
+  - approval_comments | text | Nullable: YES
+  - approval_date | timestamp | Nullable: YES
+  - is_unpaid | tinyint(1) | Nullable: YES
+  - unpaid_days | decimal(5,2) | Nullable: YES
+  - paid_leave_days | decimal(5,2) | Nullable: YES
+  - leave_duration | enum('full_day','first_half','second_half') | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Leave Management
+--------------------------------------------------
+
+Table: login_history
+Purpose: Stores data for login history
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - login_time | timestamp | Nullable: YES
+  - logout_time | timestamp | Nullable: YES
+  - ip_address | varchar(50) | Nullable: YES
+  - device_info | text | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+
+Modules Using Table:
+  - Login Management
+--------------------------------------------------
+
+Table: manager_reviews
+Purpose: Stores data for manager reviews
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - cycle_id | int | Nullable: NO
+  - manager_id | varchar(50) | Nullable: NO
+  - feedback | text | Nullable: YES
+  - rating | decimal(3,1) | Nullable: YES
+  - promotion_recommended | tinyint(1) | Nullable: YES
+  - appraisal_recommended | tinyint(1) | Nullable: YES
+  - submitted_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - cycle_id on cycle_id (Unique: False)
+  - idx_employee_cycle on employee_id (Unique: False)
+  - idx_employee_cycle on cycle_id (Unique: False)
+
+Foreign Keys & Relationships:
+  - cycle_id references performance_cycles(id)
+
+Modules Using Table:
+  - Manager Management
+--------------------------------------------------
+
+Table: monthly_late_summary
+Purpose: Stores data for monthly late summary
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - year | smallint | Nullable: NO
+  - month | tinyint | Nullable: NO
+  - late_days | tinyint | Nullable: NO
+  - deduction_triggered | tinyint(1) | Nullable: NO
+  - updated_at | datetime | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_emp_ym on employee_id (Unique: True)
+  - uq_emp_ym on year (Unique: True)
+  - uq_emp_ym on month (Unique: True)
+  - idx_ym on year (Unique: False)
+  - idx_ym on month (Unique: False)
+
+Modules Using Table:
+  - Monthly Management
+--------------------------------------------------
+
+Table: monthly_payroll
+Purpose: Stores data for monthly payroll
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - month_year | varchar(7) | Nullable: NO
+  - basic_salary | decimal(12,2) | Nullable: YES
+  - hra | decimal(12,2) | Nullable: YES
+  - allowances | decimal(12,2) | Nullable: YES
+  - gross_salary | decimal(12,2) | Nullable: YES
+  - deductions | decimal(12,2) | Nullable: YES
+  - net_salary | decimal(12,2) | Nullable: YES
+  - days_worked | int | Nullable: YES
+  - days_absent | int | Nullable: YES
+  - status | enum('draft','processed','paid') | Nullable: YES
+  - processed_by | varchar(50) | Nullable: YES
+  - processed_at | timestamp | Nullable: YES
+  - paid_at | timestamp | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - unique_emp_month on employee_id (Unique: True)
+  - unique_emp_month on month_year (Unique: True)
+
+Modules Using Table:
+  - Monthly Management
+--------------------------------------------------
+
+Table: notifications
+Purpose: Stores data for notifications
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - user_id | varchar(50) | Nullable: NO
+  - title | varchar(255) | Nullable: NO
+  - message | text | Nullable: YES
+  - type | varchar(50) | Nullable: YES
+  - is_read | tinyint(1) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_user_read on user_id (Unique: False)
+  - idx_user_read on is_read (Unique: False)
+  - idx_created on created_at (Unique: False)
+
+Modules Using Table:
+  - Notifications Management
+--------------------------------------------------
+
+Table: performance_cycles
+Purpose: Stores data for performance cycles
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - name | varchar(100) | Nullable: NO
+  - start_date | date | Nullable: NO
+  - end_date | date | Nullable: NO
+  - description | text | Nullable: YES
+  - status | varchar(20) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Performance Management
+--------------------------------------------------
+
+Table: reimbursements
+Purpose: Stores data for reimbursements
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - category | varchar(50) | Nullable: YES
+  - amount | decimal(10,2) | Nullable: YES
+  - description | text | Nullable: YES
+  - receipt_path | varchar(255) | Nullable: YES
+  - status | enum('pending','approved','rejected','paid') | Nullable: YES
+  - submitted_at | timestamp | Nullable: YES
+  - reviewed_by | varchar(50) | Nullable: YES
+  - reviewed_at | timestamp | Nullable: YES
+  - comments | text | Nullable: YES
+  - expense_date | date | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Reimbursements Management
+--------------------------------------------------
+
+Table: salary_structure
+Purpose: Stores data for salary structure
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - basic | decimal(10,2) | Nullable: NO
+  - hra | decimal(10,2) | Nullable: YES
+  - allowances | decimal(10,2) | Nullable: YES
+  - pf | decimal(10,2) | Nullable: YES
+  - esic | decimal(10,2) | Nullable: YES
+  - tds | decimal(10,2) | Nullable: YES
+  - gross_salary | decimal(10,2) | Nullable: NO
+  - net_salary | decimal(10,2) | Nullable: NO
+  - effective_from | date | Nullable: NO
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+
+Modules Using Table:
+  - Salary Management
+--------------------------------------------------
+
+Table: salary_templates
+Purpose: Stores data for salary templates
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - template_name | varchar(100) | Nullable: NO
+  - ctc_min | decimal(12,2) | Nullable: YES
+  - ctc_max | decimal(12,2) | Nullable: YES
+  - basic_percentage | decimal(5,2) | Nullable: YES
+  - hra_percentage | decimal(5,2) | Nullable: YES
+  - da_percentage | decimal(5,2) | Nullable: YES
+  - transport_allowance | decimal(10,2) | Nullable: YES
+  - medical_allowance | decimal(10,2) | Nullable: YES
+  - special_allowance_percentage | decimal(5,2) | Nullable: YES
+  - pf_percentage | decimal(5,2) | Nullable: YES
+  - esi_percentage | decimal(5,2) | Nullable: YES
+  - professional_tax | decimal(10,2) | Nullable: YES
+  - created_by | varchar(50) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+  - is_active | tinyint(1) | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Salary Management
+--------------------------------------------------
+
+Table: self_reviews
+Purpose: Stores data for self reviews
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - cycle_id | int | Nullable: NO
+  - achievements | text | Nullable: YES
+  - challenges | text | Nullable: YES
+  - goals | text | Nullable: YES
+  - rating | decimal(3,1) | Nullable: YES
+  - submitted_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - cycle_id on cycle_id (Unique: False)
+  - idx_employee_cycle on employee_id (Unique: False)
+  - idx_employee_cycle on cycle_id (Unique: False)
+
+Foreign Keys & Relationships:
+  - cycle_id references performance_cycles(id)
+
+Modules Using Table:
+  - Self Management
+--------------------------------------------------
+
+Table: selfie_access_log
+Purpose: Stores data for selfie access log
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - selfie_id | int | Nullable: NO
+  - wfh_attendance_id | int | Nullable: NO
+  - employee_id | varchar(50) | Nullable: NO
+  - accessed_by_user_id | int | Nullable: NO
+  - accessed_by_name | varchar(100) | Nullable: NO
+  - accessed_by_role | varchar(20) | Nullable: NO
+  - access_type | enum('view','approve','reject','retention_delete','manual_delete') | Nullable: NO
+  - hr_comment | text | Nullable: YES
+  - wfh_status_before | varchar(20) | Nullable: YES
+  - wfh_status_after | varchar(20) | Nullable: YES
+  - ip_address | varchar(45) | Nullable: NO
+  - user_agent | text | Nullable: NO
+  - created_at | timestamp | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_selfie on selfie_id (Unique: False)
+  - idx_wfh on wfh_attendance_id (Unique: False)
+  - idx_employee on employee_id (Unique: False)
+  - idx_accessed_by on accessed_by_user_id (Unique: False)
+  - idx_access_type on access_type (Unique: False)
+  - idx_created_at on created_at (Unique: False)
+
+Foreign Keys & Relationships:
+  - selfie_id references attendance_selfies(id)
+
+Modules Using Table:
+  - Selfie Management
+--------------------------------------------------
+
+Table: tax_slabs
+Purpose: Stores data for tax slabs
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - financial_year | varchar(10) | Nullable: YES
+  - min_income | decimal(12,2) | Nullable: YES
+  - max_income | decimal(12,2) | Nullable: YES
+  - tax_rate | decimal(5,2) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Tax Management
+--------------------------------------------------
+
+Table: team_members
+Purpose: Stores data for team members
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - team_id | int | Nullable: NO
+  - employee_id | varchar(50) | Nullable: NO
+  - added_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_team_member on team_id (Unique: True)
+  - uq_team_member on employee_id (Unique: True)
+
+Foreign Keys & Relationships:
+  - team_id references teams(id)
+
+Modules Using Table:
+  - Team Management
+--------------------------------------------------
+
+Table: teams
+Purpose: Stores data for teams
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - team_name | varchar(100) | Nullable: NO
+  - manager_id | varchar(50) | Nullable: YES
+  - description | text | Nullable: YES
+  - created_by | varchar(50) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+
+Modules Using Table:
+  - Teams Management
+--------------------------------------------------
+
+Table: user_sessions
+Purpose: Stores data for user sessions
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - session_token | varchar(255) | Nullable: NO
+  - is_active | tinyint(1) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+  - expires_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+  - idx_token on session_token (Unique: False)
+
+Modules Using Table:
+  - User Management
+--------------------------------------------------
+
+Table: users
+Purpose: Stores data for users
+
+Columns:
+  - user_id | varchar(50) | Nullable: NO (PRIMARY KEY)
+  - username | varchar(100) | Nullable: NO
+  - password | varchar(255) | Nullable: NO
+  - email | varchar(150) | Nullable: YES
+  - full_name | varchar(150) | Nullable: YES
+  - role | varchar(50) | Nullable: YES
+  - profile_completed | tinyint(1) | Nullable: YES
+  - is_active | tinyint(1) | Nullable: YES
+  - created_at | timestamp | Nullable: YES
+
+Indexes:
+  - PRIMARY on user_id (Unique: True)
+  - username on username (Unique: True)
+
+Modules Using Table:
+  - Users Management
+--------------------------------------------------
+
+Table: wfh_attendance
+Purpose: Stores data for wfh attendance
+
+Columns:
+  - id | int | Nullable: NO (PRIMARY KEY)
+  - employee_id | varchar(50) | Nullable: NO
+  - attendance_id | int | Nullable: YES
+  - punch_in_at | timestamp | Nullable: NO
+  - punch_out_at | timestamp | Nullable: YES
+  - duration_minutes | smallint unsigned | Nullable: YES
+  - idempotency_key | varchar(36) | Nullable: NO
+  - status | enum('PENDING_SELFIE','AUTO_APPROVED','FLAGGED','PENDING_REVIEW','APPROVED','REJECTED') | Nullable: NO
+  - attendance_method | enum('SELFIE','GEO') | Nullable: NO
+  - geo_latitude | decimal(10,8) | Nullable: YES
+  - geo_longitude | decimal(11,8) | Nullable: YES
+  - geo_distance_meters | decimal(10,2) | Nullable: YES
+  - flag_reason | varchar(500) | Nullable: YES
+  - client_ip | varchar(45) | Nullable: NO
+  - user_agent | text | Nullable: NO
+  - client_timestamp | timestamp | Nullable: YES
+  - created_at | timestamp | Nullable: NO
+  - updated_at | timestamp | Nullable: NO
+
+Indexes:
+  - PRIMARY on id (Unique: True)
+  - uq_idempotency on idempotency_key (Unique: True)
+  - uq_emp_date on employee_id (Unique: True)
+  - uq_emp_date on None (Unique: True)
+  - idx_employee on employee_id (Unique: False)
+  - idx_status on status (Unique: False)
+  - idx_punch_in on punch_in_at (Unique: False)
+  - idx_attendance on attendance_id (Unique: False)
+
+Modules Using Table:
+  - Wfh Management
+--------------------------------------------------
+
+Table: wfh_system_config
+Purpose: Stores data for wfh system config
+
+Columns:
+  - config_key | varchar(100) | Nullable: NO (PRIMARY KEY)
+  - config_value | varchar(500) | Nullable: NO
+  - description | text | Nullable: YES
+  - updated_at | timestamp | Nullable: NO
+
+Indexes:
+  - PRIMARY on config_key (Unique: True)
+
+Modules Using Table:
+  - Wfh Management
+--------------------------------------------------
+

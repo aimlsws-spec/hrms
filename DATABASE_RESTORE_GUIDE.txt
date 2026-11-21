@@ -1,0 +1,50 @@
+=========================================================
+DATABASE RESTORE GUIDE
+=========================================================
+
+Prerequisites:
+- MySQL 8.x installed and running.
+- Command line access (mysql and mysqldump commands available).
+
+Database Creation:
+Run the following commands in MySQL:
+CREATE DATABASE hrms CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE hrms;
+
+Import Steps:
+To import the full backup (Schema + Seed + Data):
+mysql -u root -p hrms < hrms_full_backup.sql
+
+To import in parts:
+1. mysql -u root -p hrms < hrms_schema.sql
+2. mysql -u root -p hrms < hrms_seed.sql
+3. mysql -u root -p hrms < hrms_data.sql
+
+Verification Steps:
+- Log into MySQL: mysql -u root -p
+- Run: USE hrms; SHOW TABLES;
+- Check counts: SELECT COUNT(*) FROM employees;
+
+Troubleshooting:
+- ERROR 1046 (3D000): No database selected -> Make sure to specify the db name or use 'USE hrms;' first.
+- Foreign key errors -> The full backup orders tables correctly or disables checks during import.
+
+Rollback Procedure:
+- DROP DATABASE hrms;
+- Re-create and import from a known good backup file.
+
+=========================================================
+BACKUP COMMANDS (For Future Use)
+=========================================================
+
+Full Backup:
+mysqldump -u root -p --routines --events --triggers --set-charset --default-character-set=utf8mb4 hrms > hrms_full_backup.sql
+
+Schema Only:
+mysqldump -u root -p --no-data --routines --events --triggers --set-charset --default-character-set=utf8mb4 hrms > hrms_schema.sql
+
+Data Only (All tables):
+mysqldump -u root -p --no-create-info --set-charset --default-character-set=utf8mb4 hrms > hrms_data_all.sql
+
+Seed Data Only:
+mysqldump -u root -p --no-create-info --set-charset --default-character-set=utf8mb4 hrms accountant_settings company_settings departments designations holidays tax_slabs teams wfh_system_config salary_templates salary_structure > hrms_seed.sql

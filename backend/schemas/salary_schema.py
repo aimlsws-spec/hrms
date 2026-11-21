@@ -24,3 +24,4 @@ class SalaryUpsertRequest(BaseModel):
     professional_tax:    Optional[float] = 0
     income_tax:          Optional[float] = 0
     effective_from:      Optional[str] = None
+    designation:         Optional[str] = None   # optional job title saved with the salary

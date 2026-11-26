@@ -2,8 +2,11 @@
 Employee self-service API — /api/employee/* endpoints
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from datetime import datetime
+import os
+import uuid
+import re
 import mysql.connector
 
 from backend.config import DB_CONFIG
@@ -60,9 +63,14 @@ def get_employee_expenses(employee_id: str = ""):
                 id,
                 amount,
                 COALESCE(description, category, 'Expense')          AS reason,
+                COALESCE(payment_method, 'UPI')                    AS payment_method,
+                COALESCE(receipt_path, '')                         AS receipt_path,
                 COALESCE(expense_date, DATE(submitted_at))           AS expense_date,
                 status,
-                DATE_FORMAT(submitted_at, '%d %b %Y')              AS submitted_on
+                DATE_FORMAT(submitted_at, '%d %b %Y')              AS submitted_on,
+                COALESCE(reviewed_by, '')                          AS reviewed_by,
+                DATE_FORMAT(reviewed_at, '%d %b %Y')               AS reviewed_at,
+                COALESCE(comments, '')                             AS comments
             FROM reimbursements
             WHERE employee_id = %s
             ORDER BY submitted_at DESC
@@ -83,12 +91,17 @@ def get_employee_expenses(employee_id: str = ""):
                 exp_dt = str(exp_dt) if exp_dt else ''
 
             result.append({
-                "id":           r["id"],
-                "amount":       _safe_float(r["amount"]),
-                "reason":       r["reason"] or "Expense",
-                "expense_date": exp_dt,
-                "submitted_on": r["submitted_on"] or "",
-                "status":       display,
+                "id":             r["id"],
+                "amount":         _safe_float(r["amount"]),
+                "reason":         r["reason"] or "Expense",
+                "payment_method": r.get("payment_method") or "UPI",
+                "receipt_path":   r.get("receipt_path") or "",
+                "expense_date":   exp_dt,
+                "submitted_on":   r["submitted_on"] or "",
+                "status":         display,
+                "reviewed_by":    r.get("reviewed_by") or "",
+                "reviewed_at":    r.get("reviewed_at") or "",
+                "comments":       r.get("comments") or "",
             })
         return result
     except Exception:
@@ -98,13 +111,27 @@ def get_employee_expenses(employee_id: str = ""):
 # ── POST /api/employee/expenses ────────────────────────────────────────────
 
 @router.post("/api/employee/expenses")
-async def submit_employee_expense(data: dict):
-    """Create a new expense / reimbursement request."""
+async def submit_employee_expense(request: Request):
+    """Create a new expense / reimbursement request supporting UPI/Cash and receipt/screenshot uploads."""
     try:
-        employee_id  = (data.get("employee_id") or "").strip()
-        amount_raw   = data.get("amount")
-        reason       = (data.get("reason") or "").strip()
-        expense_date = (data.get("expense_date") or "").strip()
+        content_type = request.headers.get("content-type", "")
+        file_obj = None
+
+        if "multipart/form-data" in content_type:
+            form = await request.form()
+            employee_id  = str(form.get("employee_id") or "").strip()
+            amount_raw   = form.get("amount")
+            reason       = str(form.get("reason") or "").strip()
+            expense_date = str(form.get("expense_date") or "").strip()
+            payment_method = str(form.get("payment_method") or "UPI").strip()
+            file_obj     = form.get("receipt") or form.get("file")
+        else:
+            data = await request.json()
+            employee_id  = str(data.get("employee_id") or "").strip()
+            amount_raw   = data.get("amount")
+            reason       = str(data.get("reason") or "").strip()
+            expense_date = str(data.get("expense_date") or "").strip()
+            payment_method = str(data.get("payment_method") or "UPI").strip()
 
         if not employee_id:
             return {"success": False, "message": "employee_id is required"}
@@ -128,19 +155,55 @@ async def submit_employee_expense(data: dict):
         else:
             expense_date = datetime.now().strftime('%Y-%m-%d')
 
+        # Handle receipt file upload if provided
+        receipt_path = ""
+        if file_obj and hasattr(file_obj, "filename") and file_obj.filename:
+            ext = os.path.splitext(file_obj.filename)[1].lower()
+            if ext in ('.png', '.jpg', '.jpeg', '.pdf', '.webp'):
+                upload_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                    "uploads",
+                    "reimbursements"
+                )
+                os.makedirs(upload_dir, exist_ok=True)
+                clean_name = f"{uuid.uuid4().hex[:12]}_{re.sub(r'[^a-zA-Z0-9_.-]', '_', file_obj.filename)}"
+                save_dest = os.path.join(upload_dir, clean_name)
+                contents = await file_obj.read()
+                with open(save_dest, "wb") as f:
+                    f.write(contents)
+                receipt_path = f"/uploads/reimbursements/{clean_name}"
+
         conn = _db()
         cur  = conn.cursor()
         cur.execute("""
             INSERT INTO reimbursements
-                (employee_id, category, amount, description, expense_date, status)
-            VALUES (%s, 'General', %s, %s, %s, 'pending')
-        """, (employee_id, amount, reason, expense_date))
+                (employee_id, category, amount, description, payment_method, receipt_path, expense_date, status)
+            VALUES (%s, 'General', %s, %s, %s, %s, %s, 'pending')
+        """, (employee_id, amount, reason, payment_method, receipt_path, expense_date))
         conn.commit()
         new_id = cur.lastrowid
+
+        # Notify HR users
+        try:
+            cur.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin', 'sub_hr') AND COALESCE(is_active, 1) = 1")
+            hr_users = [r[0] for r in cur.fetchall()]
+            for uid in hr_users:
+                cur.execute("""
+                    INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                    VALUES (%s, %s, %s, 'REIMBURSEMENT_SUBMITTED', 0, NOW())
+                """, (
+                    uid,
+                    f"New Reimbursement: ₹{amount:.2f}",
+                    f"Employee {employee_id} submitted reimbursement #{new_id} for ₹{amount:.2f} via {payment_method}: '{reason}'."
+                ))
+            conn.commit()
+        except Exception:
+            pass
+
         cur.close()
         conn.close()
 
-        return {"success": True, "id": new_id}
+        return {"success": True, "id": new_id, "receipt_path": receipt_path}
     except Exception as e:
         return {"success": False, "message": str(e)}
 

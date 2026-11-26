@@ -29,12 +29,14 @@ export default function EmployeeExpensesPage() {
   const [error,       setError]       = useState<string | null>(null)
 
   // form state
-  const [amount,      setAmount]      = useState('')
-  const [reason,      setReason]      = useState('')
-  const [expenseDate, setExpenseDate] = useState(today)
-  const [submitting,  setSubmitting]  = useState(false)
-  const [formError,   setFormError]   = useState<string | null>(null)
-  const [formSuccess, setFormSuccess] = useState(false)
+  const [amount,        setAmount]        = useState('')
+  const [reason,        setReason]        = useState('')
+  const [expenseDate,   setExpenseDate]   = useState(today)
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'cash'>('UPI')
+  const [receiptFile,   setReceiptFile]   = useState<File | null>(null)
+  const [submitting,    setSubmitting]    = useState(false)
+  const [formError,     setFormError]     = useState<string | null>(null)
+  const [formSuccess,   setFormSuccess]   = useState(false)
 
   const load = useCallback(async () => {
     if (!employeeId) return
@@ -73,16 +75,23 @@ export default function EmployeeExpensesPage() {
 
     setSubmitting(true)
     try {
-      const res = await employeeExpenseApi.submitExpense({
-        employee_id:  employeeId.toString(),
-        amount:       amt,
-        reason:       reason.trim(),
-        expense_date: expenseDate,
-      })
+      const formData = new FormData()
+      formData.append('employee_id', employeeId.toString())
+      formData.append('amount', String(amt))
+      formData.append('reason', reason.trim())
+      formData.append('expense_date', expenseDate)
+      formData.append('payment_method', paymentMethod)
+      if (receiptFile) {
+        formData.append('receipt', receiptFile)
+      }
+
+      const res = await employeeExpenseApi.submitExpense(formData)
       if (res.data.success) {
         setAmount('')
         setReason('')
         setExpenseDate(today)
+        setPaymentMethod('UPI')
+        setReceiptFile(null)
         setFormSuccess(true)
         setTimeout(() => setFormSuccess(false), 3000)
         await load()
@@ -136,7 +145,7 @@ export default function EmployeeExpensesPage() {
             {/* Amount */}
             <div>
               <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                Amount (₹)
+                Amount (₹) *
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 font-medium">₹</span>
@@ -147,6 +156,7 @@ export default function EmployeeExpensesPage() {
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   placeholder="0.00"
+                  required
                   className="w-full pl-7 pr-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-colors"
                 />
               </div>
@@ -155,29 +165,91 @@ export default function EmployeeExpensesPage() {
             {/* Expense date */}
             <div>
               <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                Expense Date
+                Expense Date *
               </label>
               <input
                 type="date"
                 value={expenseDate}
                 max={today}
                 onChange={e => setExpenseDate(e.target.value)}
+                required
                 className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-colors"
               />
             </div>
 
-            {/* Reason */}
-            <div className="sm:col-span-1">
+            {/* Payment Method */}
+            <div>
               <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                Reason
+                Payment Method *
+              </label>
+              <div className="grid grid-cols-2 gap-2 h-[42px]">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('UPI')}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    paymentMethod === 'UPI'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-xs'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <i className="fa-solid fa-qrcode text-[11px]" />
+                  UPI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    paymentMethod === 'cash'
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-xs'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <i className="fa-solid fa-money-bill-wave text-[11px]" />
+                  Cash
+                </button>
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Reason / Description *
               </label>
               <input
                 type="text"
                 value={reason}
                 onChange={e => setReason(e.target.value)}
-                placeholder="e.g. Team lunch, Travel, Office supplies"
+                placeholder="e.g. Travel tickets, client lunch, stationary supplies"
+                required
                 className="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-colors"
               />
+            </div>
+
+            {/* Receipt or UPI payment screenshot */}
+            <div className="sm:col-span-1">
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Receipt / UPI Screenshot
+              </label>
+              <div className="relative">
+                <input
+                  type="file"
+                  id="receipt-file-input"
+                  accept=".png,.jpg,.jpeg,.pdf,.webp"
+                  onChange={e => setReceiptFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="receipt-file-input"
+                  className="flex items-center justify-between w-full px-3 py-2 text-[12px] border border-gray-200 border-dashed rounded-xl bg-gray-50 hover:bg-gray-100/80 cursor-pointer transition-colors"
+                >
+                  <span className="truncate text-gray-600">
+                    {receiptFile ? receiptFile.name : 'Choose receipt/image…'}
+                  </span>
+                  <span className="shrink-0 ml-2 px-2 py-0.5 rounded-md bg-white border text-[10px] text-gray-500 font-semibold shadow-2xs">
+                    {receiptFile ? 'Change' : 'Browse'}
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -232,7 +304,7 @@ export default function EmployeeExpensesPage() {
           <table className="w-full text-[13px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['Expense Date', 'Reason', 'Amount', 'Submitted On', 'Status'].map(h => (
+                {['Expense Date', 'Reason', 'Amount', 'Payment Method', 'Receipt / Proof', 'Submitted On', 'Status'].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                     {h}
                   </th>
@@ -245,6 +317,8 @@ export default function EmployeeExpensesPage() {
                     <tr key={i} className="border-b border-gray-50 last:border-0">
                       <td className="px-5 py-3.5"><div className="h-3 w-20 bg-gray-100 rounded animate-pulse" /></td>
                       <td className="px-5 py-3.5"><div className="h-3 w-36 bg-gray-100 rounded animate-pulse" /></td>
+                      <td className="px-5 py-3.5"><div className="h-3 w-16 bg-gray-100 rounded animate-pulse" /></td>
+                      <td className="px-5 py-3.5"><div className="h-3 w-16 bg-gray-100 rounded animate-pulse" /></td>
                       <td className="px-5 py-3.5"><div className="h-3 w-16 bg-gray-100 rounded animate-pulse" /></td>
                       <td className="px-5 py-3.5"><div className="h-3 w-20 bg-gray-100 rounded animate-pulse" /></td>
                       <td className="px-5 py-3.5"><div className="h-5 w-16 bg-gray-100 rounded-full animate-pulse" /></td>
@@ -262,6 +336,31 @@ export default function EmployeeExpensesPage() {
                         <td className="px-5 py-3.5 font-semibold text-gray-800">
                           {fmt(exp.amount)}
                         </td>
+                        <td className="px-5 py-3.5 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                            (exp.payment_method || '').toLowerCase() === 'cash'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                          }`}>
+                            <i className={`fa-solid ${(exp.payment_method || '').toLowerCase() === 'cash' ? 'fa-money-bill-wave' : 'fa-qrcode'} text-[10px]`} />
+                            {(exp.payment_method || 'UPI').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 whitespace-nowrap">
+                          {exp.receipt_path ? (
+                            <a
+                              href={exp.receipt_path}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50/60 hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
+                            >
+                              <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
+                              View Proof
+                            </a>
+                          ) : (
+                            <span className="text-gray-400 text-xs italic">No receipt</span>
+                          )}
+                        </td>
                         <td className="px-5 py-3.5 text-gray-400 whitespace-nowrap text-[12px]">
                           {exp.submitted_on}
                         </td>
@@ -270,12 +369,17 @@ export default function EmployeeExpensesPage() {
                             <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[exp.status]}`} />
                             {exp.status}
                           </span>
+                          {exp.reviewed_by && exp.status !== 'Pending' && (
+                            <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[120px]" title={`By ${exp.reviewed_by}`}>
+                              By {exp.reviewed_by}
+                            </p>
+                          )}
                         </td>
                       </tr>
                     ))
                   : (
                     <tr>
-                      <td colSpan={5} className="px-5 py-8 text-center text-[13px] text-gray-400">
+                      <td colSpan={7} className="px-5 py-8 text-center text-[13px] text-gray-400">
                         <i className="fa-solid fa-receipt text-gray-200 text-2xl mb-2 block" />
                         No expense requests yet
                       </td>

@@ -23,6 +23,7 @@ import HRWorkHoursReportPage         from '../pages/HRWorkHoursReportPage'
 import HRAttendanceEvidencePage      from '../pages/HRAttendanceEvidencePage'
 import HRPayrollPage                 from '../pages/hr/HRPayrollPage'
 import HRActivityLogsPage            from '../pages/hr/HRActivityLogsPage'
+import HRReimbursementsPage          from '../pages/hr/HRReimbursementsPage'
 import EmployeeDashboardPage    from '../pages/employee/EmployeeDashboardPage'
 import EmployeeAttendancePage   from '../pages/employee/EmployeeAttendancePage'
 import MyProfilePage            from '../pages/employee/MyProfilePage'
@@ -83,6 +84,8 @@ export const router = createBrowserRouter([
             { path: '/attendance/work-hours',     element: <HRWorkHoursReportPage /> },
             { path: '/attendance/evidence',       element: <HRAttendanceEvidencePage /> },
             { path: '/hr/activity-logs',          element: <HRActivityLogsPage /> },
+            { path: '/hr/reimbursements',         element: <HRReimbursementsPage /> },
+            { path: '/reimbursements',            element: <HRReimbursementsPage /> },
           ],
         },
       ],

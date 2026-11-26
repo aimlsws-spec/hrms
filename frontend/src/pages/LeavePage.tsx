@@ -26,6 +26,7 @@ export default function LeavePage() {
   const [editRequest, setEditRequest] = useState<LeaveRequest | null>(null)
   const [approveRequest, setApproveRequest] = useState<LeaveRequest | null>(null)
   const [filter, setFilter] = useState<LeaveFilterStatus>('all')
+  const [scope, setScope] = useState<'all' | 'mine' | 'employees'>('all')
 
   const { balance, isLoading: balanceLoading, refetch: refetchBalance } = useLeaveBalance(user?.user_id ?? null)
 
@@ -35,7 +36,18 @@ export default function LeavePage() {
   const { requests, isLoading: reqLoading, refetch: refetchRequests, rejectRequest } =
     useLeaveRequests(isHRAdmin, user?.user_id)
 
-  const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
+  const userEmpId = String(user?.user_id || '').toUpperCase()
+  const scopeFiltered = requests.filter((r) => {
+    if (scope === 'mine') {
+      return String(r.employee_id || '').toUpperCase() === userEmpId
+    }
+    if (scope === 'employees') {
+      return String(r.employee_id || '').toUpperCase() !== userEmpId
+    }
+    return true
+  })
+
+  const filtered = filter === 'all' ? scopeFiltered : scopeFiltered.filter((r) => r.status === filter)
 
   function handleApprove(id: number) {
     const req = requests.find(r => r.id === id) ?? null
@@ -147,13 +159,57 @@ export default function LeavePage() {
               <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
                 <div>
                   <h3 className="text-base font-semibold text-gray-900">
-                    {isHRAdmin ? 'All Leave Records' : 'My Leave History'}
+                    {isHRAdmin
+                      ? (scope === 'mine'
+                          ? 'My Own Leaves (HR)'
+                          : scope === 'employees'
+                          ? 'Employee Leaves'
+                          : 'All Leave Records')
+                      : 'My Leave History'}
                   </h3>
                   <p className="text-xs text-gray-400">
-                    {isHRAdmin ? 'Maintain, approve, edit or delete leave records' : 'Your applied leave requests'}
+                    {isHRAdmin
+                      ? (scope === 'mine'
+                          ? 'Leave dates recorded by and for your HR account'
+                          : 'Maintain, approve, edit or delete leave records')
+                      : 'Your applied leave requests'}
                   </p>
                 </div>
-                <LeaveFilters value={filter} onChange={setFilter} />
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  {isHRAdmin && (
+                    <div className="inline-flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50 text-xs font-semibold p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setScope('all')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                          scope === 'all' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                        }`}
+                      >
+                        All Records
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScope('mine')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                          scope === 'mine' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                        }`}
+                      >
+                        <i className="fa-solid fa-user-tie mr-1" />
+                        My Own Leaves (HR)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScope('employees')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                          scope === 'employees' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                        }`}
+                      >
+                        Employee Leaves
+                      </button>
+                    </div>
+                  )}
+                  <LeaveFilters value={filter} onChange={setFilter} />
+                </div>
               </div>
               <LeaveTable
                 requests={filtered}

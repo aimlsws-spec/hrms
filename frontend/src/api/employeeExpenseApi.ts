@@ -9,6 +9,11 @@ export interface MyExpense {
   expense_date: string
   submitted_on: string
   status: ExpenseStatus
+  payment_method?: string
+  receipt_path?: string
+  reviewed_by?: string
+  reviewed_at?: string
+  comments?: string
 }
 
 export interface SubmitExpensePayload {
@@ -16,6 +21,8 @@ export interface SubmitExpensePayload {
   amount: number
   reason: string
   expense_date: string
+  payment_method?: string
+  receipt?: File | null
 }
 
 export const employeeExpenseApi = {
@@ -24,8 +31,8 @@ export const employeeExpenseApi = {
       params: { employee_id: employeeId },
     }),
 
-  submitExpense: (payload: SubmitExpensePayload) =>
-    client.post<{ success: boolean; id?: number; message?: string }>(
+  submitExpense: (payload: SubmitExpensePayload | FormData) =>
+    client.post<{ success: boolean; id?: number; message?: string; receipt_path?: string }>(
       '/employee/expenses',
       payload
     ),

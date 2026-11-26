@@ -4,6 +4,7 @@ import { hrSalaryApi }               from '../../api/hrSalaryApi'
 import type { EmployeeSalaryRecord } from '../../api/hrSalaryApi'
 import type { Employee }             from '../../types/employee'
 import PasswordViewer                from '../common/PasswordViewer'
+import EmployeeJoiningDocuments      from './EmployeeJoiningDocuments'
 
 interface Props {
   employee: Employee | null
@@ -194,6 +195,12 @@ export default function EmployeeProfileModal({ employee, onClose }: Props) {
               )}
             </div>
           )}
+
+          {/* Joining Documents Storage */}
+          <EmployeeJoiningDocuments
+            employeeId={employee.employee_id}
+            employeeName={employee.name}
+          />
 
           {/* Salary Breakdown */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4">

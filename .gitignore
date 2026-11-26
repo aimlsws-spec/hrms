@@ -35,6 +35,11 @@ test_relieving.*
 generated_docs/
 backend/generated_docs/
 
+# Uploaded files
+uploads/*
+!uploads/.gitkeep
+!uploads/*/.gitkeep
+
 # Sensitive employee data (photos, Aadhaar, PAN, etc.)
 backend/employee_data/
 

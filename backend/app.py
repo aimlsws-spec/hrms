@@ -57,6 +57,7 @@ from backend.core import salary_slip_generator
 from backend.core.wfh_selfie_api import router as wfh_selfie_router
 from backend.core.document_requests_api import router as document_requests_router
 from backend.core.document_requests_api import _ensure_document_requests_table
+from backend.core.reimbursement_and_docs_routes import router as reimbursements_docs_router
 
 logger = logging.getLogger(__name__)
 from backend.core.wfh_geo_api import router as wfh_geo_router
@@ -414,6 +415,7 @@ app.include_router(time_tracking_router)
 # LIVE-PUNCH DISABLED: app.include_router(biometric_router)
 app.include_router(document_requests_router)
 app.include_router(hr_features_router)
+app.include_router(reimbursements_docs_router)
 
 # Add CORS middleware
 # Note: allow_origins=["*"] is incompatible with allow_credentials=True (browsers reject it).
@@ -449,6 +451,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # app.py, config.py, and every other backend file (including, in production,
 # employee_data/ with Aadhaar/PAN scans) to any unauthenticated visitor.
 app.mount("/images", StaticFiles(directory=os.path.join(BASE_DIR, "images", "images")), name="images")
+
+# Mount uploaded files (reimbursements, joining documents)
+UPLOAD_DIR = os.path.join(os.path.dirname(BASE_DIR), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "templates"))

@@ -666,7 +666,7 @@ function RequestsTab() {
 
 export default function DocumentsPage() {
   const { user } = useAuthStore()
-  const isHRAdmin = user?.role === 'admin' || user?.role === 'hr'
+  const isHRAdmin = user?.role === 'admin' || user?.role === 'hr' || user?.role === 'sub_hr'
 
   const [activeDoc, setActiveDoc] = useState<ActiveDoc>(null)
   const [tab,       setTab]       = useState<Tab>('generate')
@@ -677,9 +677,26 @@ export default function DocumentsPage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Generate HR documents and manage employee requests</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Document Generation &amp; Requests</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            HR enters employee details manually to generate official appointment letters, offer letters, and certificates.
+          </p>
+        </div>
+      </div>
+
+      {/* Template notice banner */}
+      <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-start gap-3">
+        <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
+          <i className="fa-solid fa-file-signature text-xs" />
+        </div>
+        <div className="text-xs text-indigo-900">
+          <p className="font-semibold">Company Template Formats</p>
+          <p className="text-indigo-700/90 mt-0.5">
+            Documents are generated using standard company formatting. To support custom organizational letterheads, seals, or specific clauses, HR can share the official templates/formats with the engineering team.
+          </p>
+        </div>
       </div>
 
       {!isHRAdmin ? (

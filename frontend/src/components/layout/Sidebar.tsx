@@ -16,6 +16,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/employees',    label: 'Employees',        icon: 'fas fa-users',          roles: ['admin', 'hr', 'sub_hr'] },
   { to: '/leaves',       label: 'Leave Management', icon: 'fas fa-calendar-alt',   roles: ['admin', 'hr', 'sub_hr', 'manager'] },
   { to: '/payroll',      label: 'Payroll',          icon: 'fas fa-money-bill-wave', roles: ['admin', 'hr', 'sub_hr'] },
+  { to: '/hr/reimbursements', label: 'Reimbursements', icon: 'fas fa-money-check-dollar', roles: ['admin', 'hr', 'sub_hr'] },
   { to: '/documents',    label: 'Documents',        icon: 'fas fa-file-alt',       roles: ['admin', 'hr', 'sub_hr'] },
   {
     to: '/attendance',

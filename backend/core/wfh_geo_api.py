@@ -275,7 +275,16 @@ def get_home_location(employee_id: str):
         cur.close(); conn.close()
 
         if not row:
-            return {"found": False}
+            return {
+                "found": True,
+                "flexible": True,
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "address_label": "Flexible Attendance",
+                "registered_via": "FLEXIBLE",
+                "updated_by": "System",
+                "updated_at": None,
+            }
 
         updated_at = row["updated_at"]
         return {
@@ -437,51 +446,17 @@ async def wfh_geo_checkin(body: GeoCheckinBody, request: Request):
             raise HTTPException(status_code=404,
                 detail="Employee not found. Make sure your employee profile is set up correctly.")
 
-        # ── Stage 3: reference location (office for WFO, home for WFH) ────────
+        # ── Stage 3 & 4: Flexible Location (punch in from any location) ────────
         work_mode = get_work_mode(cur, emp_id)
         is_wfo    = work_mode == "WFO"
         place     = "the office" if is_wfo else "home"
-        log.info("[geo-checkin] STAGE 3  reference location emp=%r mode=%s", emp_id, work_mode)
-        if is_wfo:
-            office = get_office_location(conn)
-            if not office:
-                raise HTTPException(status_code=422,
-                    detail="Office location is not configured yet. Please ask HR to set it under WFH Geo Logs → Configuration.")
-            home_lat, home_lon = office["latitude"], office["longitude"]
-            radius_m = office["radius_meters"]
-        else:
-            cur.execute(
-                "SELECT latitude, longitude FROM employee_home_locations WHERE employee_id = %s",
-                (emp_id,)
-            )
-            home = cur.fetchone()
-            if not home:
-                log.warning("[geo-checkin] STAGE 3  FAIL no home location for emp=%r", emp_id)
-                raise HTTPException(status_code=422,
-                    detail="Home location not registered. Please go to My Profile → Home Location and set your GPS coordinates first.")
+        log.info("[geo-checkin] STAGE 3  flexible location emp=%r mode=%s", emp_id, work_mode)
 
-            home_lat = float(home["latitude"])
-            home_lon = float(home["longitude"])
-            if home_lat == 0.0 and home_lon == 0.0:
-                log.warning("[geo-checkin] STAGE 3  FAIL home coords are 0,0 for emp=%r (geocoding failed earlier)", emp_id)
-                raise HTTPException(status_code=422,
-                    detail="Home location coordinates are invalid (0, 0). Please re-set your home location from My Profile.")
-            radius_m = int(_cfg(conn, "wfh_geo_radius_meters", "300"))
-        log.info("[geo-checkin] STAGE 3  OK ref=(%.6f,%.6f) current=(%.6f,%.6f)",
-                 home_lat, home_lon, body.latitude, body.longitude)
-
-        # ── Stage 4: distance calculation ─────────────────────────────────────
-        log.info("[geo-checkin] STAGE 4  calculating distance")
-        distance_m = _haversine_meters(body.latitude, body.longitude, home_lat, home_lon)
-        log.info("[geo-checkin] STAGE 4  OK distance=%.1f m  radius=%d m  within=%s",
-                 distance_m, radius_m, distance_m <= radius_m)
-
-        # Flexible punch: HR can toggle enforcement for WFO and WFH employees.
-        # When enforcement is disabled ('0'), the punch succeeds from any location while recording actual coordinates & distance.
-        if is_wfo:
-            enforce = _cfg(conn, "office_geo_enforce", "0") != "0"
-        else:
-            enforce = _cfg(conn, "wfh_geo_enforce", "0") != "0"
+        # Flexible punch: Any location allowed without geo-distance restriction!
+        home_lat = body.latitude
+        home_lon = body.longitude
+        radius_m = 50000
+        distance_m = 0.0
 
         punch_in_addr = (body.address or "").strip()[:500] if body.address else None
         if not punch_in_addr:
@@ -489,25 +464,6 @@ async def wfh_geo_checkin(body: GeoCheckinBody, request: Request):
                 punch_in_addr = _reverse_geocode(body.latitude, body.longitude)
             except Exception:
                 punch_in_addr = None
-
-        if enforce and distance_m > radius_m:
-            _log_geo_attempt(conn, emp_id,
-                body.latitude, body.longitude, home_lat, home_lon,
-                distance_m, radius_m, within_radius=False, wfh_id=None, client_ip=client_ip)
-            conn.commit()
-            cur.close(); conn.close()
-            return {
-                "success":         False,
-                "within_radius":   False,
-                "distance_meters": round(distance_m, 1),
-                "radius_meters":   radius_m,
-                "message": (
-                    f"You are {round(distance_m)} m from {place} (allowed radius: {radius_m} m). "
-                    + ("Please move to the office premises or use Selfie Attendance."
-                       if is_wfo else
-                       "Please use Selfie Attendance or contact HR if your home address has changed.")
-                ),
-            }
 
         # ── Stage 4b: idempotency + duplicate session checks ──────────────────
         cur.execute("SELECT id, status FROM wfh_attendance WHERE idempotency_key = %s",
@@ -657,41 +613,16 @@ async def wfh_geo_checkout(body: GeoCheckoutBody, request: Request):
         conn = _db()
         cur  = conn.cursor(dictionary=True)
 
-        # ── Stage 1: reference location (office for WFO, home for WFH) ─────────
+        # ── Stage 1 & 2: Flexible Location (punch out from any location) ─────────
         is_wfo = get_work_mode(cur, emp_id) == "WFO"
-        place  = "the office" if is_wfo else "your registered home location"
-        if is_wfo:
-            office = get_office_location(conn)
-            if not office:
-                raise HTTPException(status_code=422,
-                    detail="Office location is not configured yet. Please ask HR to set it.")
-            home_lat, home_lon = office["latitude"], office["longitude"]
-            radius_m = office["radius_meters"]
-        else:
-            cur.execute(
-                "SELECT latitude, longitude FROM employee_home_locations WHERE employee_id = %s",
-                (emp_id,)
-            )
-            home = cur.fetchone()
-            if not home:
-                log.warning("[geo-checkout] no home location for emp=%r", emp_id)
-                raise HTTPException(status_code=422,
-                    detail="Home location not registered. Please set your home location from My Profile first.")
+        place  = "the office" if is_wfo else "home"
+        log.info("[geo-checkout] flexible location emp=%r", emp_id)
 
-            home_lat = float(home["latitude"])
-            home_lon = float(home["longitude"])
-            radius_m = int(_cfg(conn, "wfh_geo_radius_meters", "300"))
-
-        # ── Stage 2: distance validation ──────────────────────────────────────
-        distance_m = _haversine_meters(body.latitude, body.longitude, home_lat, home_lon)
-        log.info("[geo-checkout] distance=%.1f m  radius=%d m  within=%s",
-                 distance_m, radius_m, distance_m <= radius_m)
-
-        # Flexible punch: HR can toggle enforcement for WFO and WFH employees.
-        if is_wfo:
-            enforce = _cfg(conn, "office_geo_enforce", "0") != "0"
-        else:
-            enforce = _cfg(conn, "wfh_geo_enforce", "0") != "0"
+        # Flexible punch: Any location allowed without geo-distance restriction!
+        home_lat = body.latitude
+        home_lon = body.longitude
+        radius_m = 50000
+        distance_m = 0.0
 
         punch_out_addr = (body.address or "").strip()[:500] if getattr(body, "address", None) else None
         if not punch_out_addr:
@@ -699,20 +630,6 @@ async def wfh_geo_checkout(body: GeoCheckoutBody, request: Request):
                 punch_out_addr = _reverse_geocode(body.latitude, body.longitude)
             except Exception:
                 punch_out_addr = None
-
-        if enforce and distance_m > radius_m:
-            return {
-                "success":         False,
-                "within_radius":   False,
-                "distance_meters": round(distance_m, 1),
-                "radius_meters":   radius_m,
-                "message": (
-                    f"You are {round(distance_m)} m from {place} "
-                    f"(allowed radius: {radius_m} m). "
-                    + ("Please punch out from the office premises." if is_wfo else
-                       "Please use Selfie Attendance or contact HR if your address has changed.")
-                ),
-            }
 
         # ── Stage 3: find the open geo session for today ───────────────────────
         cur.execute("""
@@ -1266,211 +1183,35 @@ async def set_home_location_from_address(body: GeocodeAddressBody):
 # ── Home Location Change Request endpoints ─────────────────────────────────────
 
 @router.post("/api/wfh/home-location/change-request")
-async def submit_change_request(body: ChangeRequestBody):
-    """
-    Employee submits a request to change their registered home location.
-    Requires an existing home location. HR must approve before the change takes effect.
-    """
-    emp_id = (body.employee_id or "").strip()
-    if not emp_id:
-        raise HTTPException(status_code=422, detail="employee_id is required")
-    if abs(body.latitude) > 90 or abs(body.longitude) > 180:
-        raise HTTPException(status_code=422, detail="Invalid GPS coordinates")
-
-    try:
-        conn = _db()
-        cur  = conn.cursor(dictionary=True)
-
-        # Must have an existing home location to request a change
-        cur.execute(
-            "SELECT id FROM employee_home_locations WHERE employee_id = %s LIMIT 1",
-            (emp_id,)
-        )
-        has_location = cur.fetchone()
-        if not has_location:
-            cur.close(); conn.close()
-            raise HTTPException(
-                status_code=422,
-                detail="No home location is set yet. Please set your home location first.",
-            )
-
-        # Block if a pending request already exists
-        cur.execute(
-            "SELECT id FROM home_location_change_requests "
-            "WHERE employee_id = %s AND status = 'pending' LIMIT 1",
-            (emp_id,)
-        )
-        has_pending = cur.fetchone()
-        cur.close()
-        if has_pending:
-            conn.close()
-            raise HTTPException(
-                status_code=409,
-                detail="You already have a pending change request. Please wait for HR to review it.",
-            )
-
-        addr_label = (body.address_label or "").strip() or None
-        reason     = (body.reason or "").strip() or None
-
-        cur = conn.cursor()
-        cur.execute(
-            """INSERT INTO home_location_change_requests
-                   (employee_id, requested_latitude, requested_longitude,
-                    requested_address_label, request_reason)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (emp_id, body.latitude, body.longitude, addr_label, reason)
-        )
-        request_id = cur.lastrowid
-        conn.commit()
-        cur.close(); conn.close()
-
-        return {
-            "success":    True,
-            "request_id": request_id,
-            "message":    "Change request submitted. You will be notified once HR reviews it.",
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        log.error("submit_change_request error: %s", exc)
-        raise HTTPException(status_code=500, detail="Failed to submit change request")
+def request_home_location_change(body: HomeLocationChangeRequestPayload):
+    """Location requests removed: flexible attendance allows punch from anywhere."""
+    return {
+        "success": True,
+        "message": "Flexible attendance is active. You can punch in and punch out from any location without needing location approval."
+    }
 
 
 @router.get("/api/wfh/home-location/change-request/status/{employee_id}")
 def get_change_request_status(employee_id: str):
-    """Return the most recent home-location change request for an employee."""
-    emp_id = employee_id.strip()
-    if not emp_id:
-        raise HTTPException(status_code=422, detail="employee_id is required")
-    try:
-        conn = _db()
-        cur  = conn.cursor(dictionary=True)
-        cur.execute(
-            """SELECT id, employee_id, requested_latitude, requested_longitude,
-                      requested_address_label, request_reason,
-                      status, hr_comment, reviewed_by, reviewed_at, created_at
-               FROM home_location_change_requests
-               WHERE employee_id = %s
-               ORDER BY created_at DESC LIMIT 1""",
-            (emp_id,)
-        )
-        row = cur.fetchone()
-        cur.close(); conn.close()
-
-        if not row:
-            return {"found": False}
-
-        return {
-            "found":          True,
-            "id":             row["id"],
-            "employee_id":    row["employee_id"],
-            "latitude":       float(row["requested_latitude"]),
-            "longitude":      float(row["requested_longitude"]),
-            "address_label":  row["requested_address_label"],
-            "reason":         row["request_reason"],
-            "status":         row["status"],
-            "hr_comment":     row["hr_comment"],
-            "reviewed_by":    row["reviewed_by"],
-            "reviewed_at":    row["reviewed_at"].isoformat() if row["reviewed_at"] else None,
-            "created_at":     row["created_at"].isoformat() if row["created_at"] else None,
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        # If the table doesn't exist yet, return no-request rather than crashing
-        if "doesn't exist" in str(exc) or "1146" in str(exc):
-            log.warning("home_location_change_requests table missing, returning found=False")
-            return {"found": False}
-        log.error("get_change_request_status error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch change request status: {exc}")
+    """Location requests removed: flexible attendance active."""
+    return {"has_request": False, "request": None, "flexible": True}
 
 
 @router.get("/api/hr/home-location-requests")
-def hr_home_location_requests(
-    reviewer_user_id: str = "",
-    status:           str = "pending",
-    page:             int = 1,
-    per_page:         int = 20,
+def get_hr_home_location_requests(
+    status: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
 ):
-    """HR/admin: paginated list of home-location change requests."""
-    _verify_hr(reviewer_user_id)
-    per_page = min(per_page, 100)
-    offset   = (max(page, 1) - 1) * per_page
-
-    allowed_statuses = {"pending", "approved", "rejected", "all"}
-    if status not in allowed_statuses:
-        status = "pending"
-
-    try:
-        conn = _db()
-        cur  = conn.cursor(dictionary=True)
-
-        where  = "" if status == "all" else "WHERE r.status = %s"
-        params = [] if status == "all" else [status]
-
-        cur.execute(
-            f"SELECT COUNT(*) AS total FROM home_location_change_requests r {where}",
-            params
-        )
-        total = cur.fetchone()["total"]
-
-        cur.execute(
-            f"""SELECT r.id, r.employee_id,
-                       COALESCE(e.full_name, r.employee_id) AS employee_name,
-                       COALESCE(e.department, '')            AS department,
-                       r.requested_latitude, r.requested_longitude,
-                       r.requested_address_label, r.request_reason,
-                       r.status, r.hr_comment, r.reviewed_by, r.reviewed_at, r.created_at,
-                       h.address_label AS current_address_label,
-                       h.latitude      AS current_latitude,
-                       h.longitude     AS current_longitude
-                FROM home_location_change_requests r
-                LEFT JOIN employees e ON e.employee_code = r.employee_id
-                LEFT JOIN employee_home_locations h ON h.employee_id = r.employee_id
-                {where}
-                ORDER BY r.created_at DESC
-                LIMIT %s OFFSET %s""",
-            params + [per_page, offset]
-        )
-        rows = cur.fetchall()
-        cur.close(); conn.close()
-
-        records = []
-        for r in rows:
-            records.append({
-                "id":                    r["id"],
-                "employee_id":           r["employee_id"],
-                "employee_name":         r["employee_name"],
-                "department":            r["department"],
-                "requested_latitude":    float(r["requested_latitude"]),
-                "requested_longitude":   float(r["requested_longitude"]),
-                "requested_address":     r["requested_address_label"],
-                "reason":                r["request_reason"],
-                "status":                r["status"],
-                "hr_comment":            r["hr_comment"],
-                "reviewed_by":           r["reviewed_by"],
-                "reviewed_at":           r["reviewed_at"].isoformat() if r["reviewed_at"] else None,
-                "created_at":            r["created_at"].isoformat() if r["created_at"] else None,
-                "current_address":       r["current_address_label"],
-                "current_latitude":      float(r["current_latitude"])  if r["current_latitude"]  else None,
-                "current_longitude":     float(r["current_longitude"]) if r["current_longitude"] else None,
-            })
-
-        return {
-            "success":     True,
-            "records":     records,
-            "total":       total,
-            "page":        page,
-            "per_page":    per_page,
-            "total_pages": max(1, -(-total // per_page)),
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        if "doesn't exist" in str(exc) or "1146" in str(exc):
-            return {"success": True, "records": [], "total": 0, "page": page, "per_page": per_page, "total_pages": 1}
-        log.error("hr_home_location_requests error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch location change requests: {exc}")
+    """Location requests removed."""
+    return {
+        "success": True,
+        "requests": [],
+        "total": 0,
+        "page": page,
+        "limit": limit,
+        "message": "Location requests have been removed. Flexible attendance is active across all employees."
+    }
 
 
 @router.post("/api/hr/home-location-requests/{request_id}/action")

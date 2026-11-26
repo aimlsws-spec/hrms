@@ -76,7 +76,7 @@ export const router = createBrowserRouter([
             { path: '/analytics',   element: <AnalyticsPage /> },
             { path: '/wfh-review',    element: <WfhSelfieReviewPage /> },
             { path: '/wfh-geo-logs', element: <WfhGeoLogsPage /> },
-            { path: '/hr/home-location-requests', element: <HRHomeLocationRequestsPage /> },
+            { path: '/hr/home-location-requests', element: <Navigate to="/attendance/evidence" replace /> },
             // LIVE-PUNCH DISABLED: { path: '/biometric/live',            element: <LiveAttendancePage /> },
             { path: '/hr/unified-attendance',     element: <HRUnifiedAttendancePage /> },
             { path: '/attendance/wfo',            element: <HRWFOAttendancePage /> },

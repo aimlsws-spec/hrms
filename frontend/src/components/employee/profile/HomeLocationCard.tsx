@@ -456,8 +456,8 @@ export default function HomeLocationCard({ profile, onSaved }: Props) {
 
       {/* Header */}
       <div className="mb-5">
-        <p className="text-[14px] font-semibold text-gray-800">Home Location</p>
-        <p className="text-[12px] text-gray-400 mt-0.5">Required for WFH geo attendance</p>
+        <p className="text-[14px] font-semibold text-gray-800">Work Location &amp; Address</p>
+        <p className="text-[12px] text-gray-400 mt-0.5">Flexible attendance enabled — punch in and out from anywhere</p>
       </div>
 
       {/* ── Case 1: No location set — first-time setup ── */}
@@ -513,62 +513,21 @@ export default function HomeLocationCard({ profile, onSaved }: Props) {
             </div>
             <div className="bg-emerald-50 text-emerald-600 text-[11px] rounded-lg px-3 py-1.5 flex items-center gap-2">
               <i className="fa-solid fa-circle-check text-[10px]" />
-              Coordinates verified — geo attendance is active
+              Flexible attendance active — punch in from any location without approval
             </div>
           </div>
 
-          {/* Change request status area */}
-          {requestLoading ? (
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 py-2">
-              <i className="fa-solid fa-circle-notch animate-spin" /> Checking request status…
-            </div>
-          ) : hasPending ? (
-            <div className="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-              <div className="flex items-center gap-2 mb-1">
-                <i className="fa-solid fa-clock text-amber-500 text-[12px]" />
-                <p className="text-[12px] font-semibold text-amber-700">Change Request Pending</p>
-              </div>
-              <p className="text-[11px] text-amber-600">
-                Your request to change home location is awaiting HR review.
-                You will be able to submit a new request once this one is resolved.
+          {/* Flexible attendance notice */}
+          <div className="mt-3 p-3.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 flex items-start gap-2">
+            <i className="fa-solid fa-circle-info text-blue-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-blue-900">Flexible Punch-In Enabled</p>
+              <p className="text-blue-700/80 mt-0.5">
+                Location requests have been removed. You can punch in and punch out from any location without needing prior HR approval.
               </p>
-              {changeRequest?.latitude && (
-                <p className="text-[10px] font-mono text-amber-500 mt-1">
-                  Requested: {changeRequest.latitude.toFixed(6)}, {changeRequest.longitude?.toFixed(6)}
-                </p>
-              )}
-              {changeRequest?.created_at && (
-                <p className="text-[10px] text-amber-400 mt-0.5">Submitted {fmtDate(changeRequest.created_at)}</p>
-              )}
             </div>
-          ) : (
-            <>
-              {/* Show last decision if any */}
-              {lastApproved && (
-                <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2 text-[11px] text-emerald-700 flex items-center gap-2">
-                  <i className="fa-solid fa-circle-check text-[10px]" />
-                  Your previous change request was approved.
-                  {changeRequest?.hr_comment && <span className="ml-1 text-emerald-600">"{changeRequest.hr_comment}"</span>}
-                </div>
-              )}
-              {lastRejected && (
-                <div className="mt-3 bg-red-50 border border-red-100 rounded-xl px-4 py-2 text-[11px] text-red-600">
-                  <i className="fa-solid fa-circle-xmark mr-1.5" />
-                  Your last change request was rejected.
-                  {changeRequest?.hr_comment && <span className="ml-1">Reason: "{changeRequest.hr_comment}"</span>}
-                </div>
-              )}
-
-              {/* Request change button / form */}
-              <ChangeRequestPanel
-                employeeId={employeeId}
-                currentLat={profile.home_latitude}
-                currentLon={profile.home_longitude}
-                onRequestSubmitted={() => setRefreshTrigger(t => t + 1)}
-              />
-            </>
-          )}
-        </>
+          </div>
+</>
       )}
     </div>
   )

@@ -394,10 +394,10 @@ export default function EmployeeAttendancePage() {
               <div className="space-y-4">
                 <ContentHeader
                   title="Punch In / Out"
-                  subtitle={isWFO ? 'Location at the office and a selfie are both required' : 'Location at your home and a selfie are both required'}
+                  subtitle="Flexible attendance: punch in and punch out from any location"
                 />
                 <InfoNotice>
-                  Step 1 checks your GPS location against {isWFO ? 'the office' : 'your registered home address'}.
+                  Step 1 records your GPS location (flexible attendance from any location). Step 2 captures a selfie for identity verification.
                   Step 2 is a selfie. Your attendance is recorded only after both are done.
                 </InfoNotice>
                 {!wfhStatusLoading && employeeCode && (

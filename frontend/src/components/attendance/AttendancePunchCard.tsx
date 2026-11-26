@@ -159,7 +159,7 @@ export default function AttendancePunchCard({ employeeId, isWFO, status, onRefre
             </div>
             <div>
               <p className="text-[14px] font-bold text-gray-800">Punch Out</p>
-              <p className="text-[11px] text-gray-400">Verify you are at {place} to close attendance</p>
+              <p className="text-[11px] text-gray-400">Capture your current location to close attendance</p>
             </div>
           </div>
           <GeoCheckoutFlow
@@ -222,8 +222,8 @@ export default function AttendancePunchCard({ employeeId, isWFO, status, onRefre
             <i className="fa-solid fa-location-dot text-indigo-600 text-[13px]" />
           </div>
           <div>
-            <p className="text-[14px] font-bold text-gray-800">Step 1 of 2 — Verify your location</p>
-            <p className="text-[11px] text-gray-400">Comparing with {isWFO ? 'the office location' : 'your registered home address'}</p>
+            <p className="text-[14px] font-bold text-gray-800">Step 1 of 2 — Capture your location</p>
+            <p className="text-[11px] text-gray-400">Flexible attendance — punch in from any location</p>
           </div>
         </div>
         <GeoCheckinFlow
@@ -236,47 +236,17 @@ export default function AttendancePunchCard({ employeeId, isWFO, status, onRefre
     )
   }
 
-  // ── Not punched in ───────────────────────────────────────────────────────────
-  if (!isWFO && homeFetched && !homeLocation?.found) {
-    return (
-      <div className={shell}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-            <i className="fa-solid fa-house text-amber-500 text-[13px]" />
-          </div>
-          <div>
-            <p className="text-[14px] font-bold text-gray-800">Home Location Not Set</p>
-            <p className="text-[11px] text-gray-400">Required before you can punch in</p>
-          </div>
-        </div>
-        <p className="text-[12px] text-gray-500 leading-relaxed">
-          Register your home GPS location once. Open this page <strong>while at home</strong> and click the button below.
-        </p>
-        <button onClick={() => setShowSetHome(true)} className={btnPrimary}>
-          <i className="fa-solid fa-house-location text-[12px]" /> Set My Home Location
-        </button>
-        {showSetHome && (
-          <SetHomeLocationModal
-            employeeId={employeeId}
-            existingLabel={null}
-            onSaved={() => { setShowSetHome(false); setHomeFetched(false) }}
-            onClose={() => setShowSetHome(false)}
-          />
-        )}
-      </div>
-    )
-  }
-
+  // ── Not punched in (Flexible attendance) ───────────────────────────
   return (
     <div className={shell}>
       <StepPills locationDone={false} selfieDone={false} />
       <div>
-        <p className="text-[14px] font-bold text-gray-800">{isWFO ? 'Work From Office' : 'Work From Home'}</p>
+        <p className="text-[14px] font-bold text-gray-800">Flexible Attendance</p>
         <p className="text-[11px] text-gray-400">Not punched in today</p>
       </div>
       <p className="text-[12px] text-gray-500 leading-relaxed">
-        Punch-in needs two checks: your location must be at {place}, and you must take a selfie.
-        Attendance is recorded only after both.
+        Flexible attendance is enabled: you can punch in and punch out from any location.
+        Capture your current location and take a quick selfie to complete check-in.
       </p>
       <button onClick={() => setStep('location')} className={btnPrimary}>
         <i className="fa-solid fa-right-to-bracket text-[12px]" /> Punch In

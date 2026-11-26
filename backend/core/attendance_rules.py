@@ -65,21 +65,7 @@ def _cfg(conn, key: str, default: str) -> str:
 # ── Rule 1 helpers — first check-in time for an employee on a date ────────────
 
 def _first_biometric_punch(cur, employee_id: str, target_date: date) -> Optional[time]:
-    """Return earliest biometric punch for this employee on target_date."""
-    cur.execute(
-        """
-        SELECT MIN(r.punch_time) AS first_punch
-        FROM biometric_raw_logs r
-        JOIN biometric_employee_map m
-          ON m.enroll_id = r.enroll_id AND m.is_active = 1
-        WHERE m.employee_id = %s
-          AND DATE(r.punch_time) = %s
-        """,
-        (employee_id, target_date),
-    )
-    row = cur.fetchone()
-    if row and row["first_punch"]:
-        return row["first_punch"].time() if hasattr(row["first_punch"], "time") else row["first_punch"]
+    """Biometric punch removed. Returns None."""
     return None
 
 
@@ -553,128 +539,8 @@ def run_daily_rules(target_date: Optional[date] = None) -> dict:
 # ── WFO auto-process: mark attendance from biometric punches during the day ───
 
 def auto_process_wfo_attendance(target_date=None) -> dict:
-    """
-    For every WFO employee with PENDING status who has a registered biometric
-    enroll_id, look up their earliest punch in biometric_raw_logs and mark them
-    PRESENT.  Called every 30 minutes by the scheduler (8 AM – 4 PM).
-    Safe to re-run — uses ON DUPLICATE KEY UPDATE / conditional UPDATE.
-    """
-    if target_date is None:
-        target_date = date.today()
-
-    log.info("[wfo-auto] Starting WFO auto-process for %s", target_date)
-    conn = _db()
-    cur  = conn.cursor(dictionary=True)
-    processed = 0
-    skipped   = 0
-
-    try:
-        cur.execute(
-            """
-            SELECT dwm.employee_id, e.biometric_enroll_id
-            FROM   daily_work_mode dwm
-            JOIN   employees e ON e.employee_code = dwm.employee_id
-            WHERE  dwm.mode      = 'WFO'
-              AND  dwm.status    = 'PENDING'
-              AND  dwm.work_date = %s
-              AND  e.biometric_enroll_id IS NOT NULL
-              AND  e.biometric_enroll_id != ''
-            """,
-            (target_date,),
-        )
-        pending = cur.fetchall()
-        log.info("[wfo-auto] %d pending WFO employees found", len(pending))
-
-        for emp in pending:
-            employee_id = emp["employee_id"]
-            enroll_id   = emp["biometric_enroll_id"]
-
-            # Stage 1: MIN + MAX via employee_map join (preferred)
-            cur.execute(
-                """
-                SELECT MIN(r.punch_time) AS min_p, MAX(r.punch_time) AS max_p
-                FROM   biometric_raw_logs r
-                JOIN   biometric_employee_map m
-                  ON   m.enroll_id = r.enroll_id AND m.is_active = 1
-                WHERE  m.employee_id = %s AND DATE(r.punch_time) = %s
-                """,
-                (employee_id, target_date),
-            )
-            bio = cur.fetchone()
-            first_punch_dt = bio["min_p"] if bio else None
-            last_punch_dt  = bio["max_p"] if bio else None
-
-            # Stage 2: direct enroll_id fallback (catches recently-synced records)
-            if not first_punch_dt:
-                cur.execute(
-                    "SELECT MIN(punch_time) AS fp, MAX(punch_time) AS lp "
-                    "FROM biometric_raw_logs "
-                    "WHERE enroll_id = %s AND DATE(punch_time) = %s",
-                    (enroll_id, target_date),
-                )
-                row = cur.fetchone()
-                if row and row["fp"]:
-                    first_punch_dt = row["fp"]
-                    last_punch_dt  = row["lp"]
-
-            if not first_punch_dt:
-                skipped += 1
-                continue
-
-            first_time = first_punch_dt.time() if hasattr(first_punch_dt, "time") else first_punch_dt
-            punch_in_str  = first_time.strftime("%H:%M:%S")
-            punch_out_str = (
-                (last_punch_dt.time() if hasattr(last_punch_dt, "time") else last_punch_dt)
-                .strftime("%H:%M:%S")
-                if last_punch_dt else None
-            )
-            late = is_late(first_time)
-
-            # Mark PRESENT during the day; process_daily_sessions() recalculates at 23:30
-            cur.execute(
-                """
-                INSERT INTO attendance
-                    (employee_id, date, status, check_in, check_out, is_late, check_in_source)
-                VALUES (%s, %s, 'PRESENT', %s, %s, %s, 'BIOMETRIC')
-                ON DUPLICATE KEY UPDATE
-                    status          = IF(status IN ('', 'ABSENT'), 'PRESENT', status),
-                    check_in        = COALESCE(check_in, VALUES(check_in)),
-                    check_out       = VALUES(check_out),
-                    is_late         = VALUES(is_late),
-                    check_in_source = 'BIOMETRIC'
-                """,
-                (employee_id, target_date, punch_in_str, punch_out_str, late),
-            )
-
-            # Update daily_work_mode
-            cur.execute(
-                """
-                UPDATE daily_work_mode
-                SET  status            = 'PRESENT',
-                     checked_in_at     = %s,
-                     check_in_method   = 'BIOMETRIC',
-                     biometric_user_id = %s
-                WHERE employee_id = %s AND work_date = %s AND status = 'PENDING'
-                """,
-                (first_punch_dt, enroll_id, employee_id, target_date),
-            )
-            processed += 1
-            log.info(
-                "[wfo-auto] PRESENT: %s  in=%s  out=%s  late=%s",
-                employee_id, punch_in_str, punch_out_str, late,
-            )
-
-        conn.commit()
-
-    except Exception as exc:
-        log.error("[wfo-auto] Error: %s", exc)
-        conn.rollback()
-    finally:
-        cur.close()
-        conn.close()
-
-    log.info("[wfo-auto] Done — processed=%d no_punch_yet=%d", processed, skipped)
-    return {"date": str(target_date), "processed": processed, "pending_no_punch": skipped}
+    """Biometric machine punch integration removed."""
+    return {"date": str(target_date or date.today()), "processed": 0, "pending_no_punch": 0}
 
 
 # ── Helper: get monthly late summary for a single employee ────────────────────

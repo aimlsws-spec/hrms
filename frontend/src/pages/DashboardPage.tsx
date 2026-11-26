@@ -88,7 +88,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Row 2: Recent Employees + Quick Actions ── */}
-      <div className={`grid grid-cols-1 gap-4 items-start ${isAdminOrHR ? 'xl:grid-cols-[1fr_300px]' : ''}`}>
+      <div className={`grid grid-cols-1 gap-4 items-start ${isAdminOrHR ? 'xl:grid-cols-[1fr_360px] 2xl:grid-cols-[1fr_380px]' : ''}`}>
         {isAdminOrHR && <RecentEmployeesTable />}
 
         {/* Quick Actions panel */}
@@ -129,7 +129,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Row 3 & 4: Main Content + Sidebar Widgets ── */}
-      <div className={`grid grid-cols-1 gap-4 items-start ${isAdminOrHR ? 'xl:grid-cols-[1fr_300px]' : ''}`}>
+      <div className={`grid grid-cols-1 gap-4 items-start ${isAdminOrHR ? 'xl:grid-cols-[1fr_360px] 2xl:grid-cols-[1fr_380px]' : ''}`}>
         
         {/* Left Column (Main Content) */}
         <div className="space-y-4 flex flex-col">

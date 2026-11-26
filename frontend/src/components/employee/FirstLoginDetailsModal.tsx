@@ -110,140 +110,172 @@ export default function FirstLoginDetailsModal({ isOpen, onCompleted }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto border border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-100 overflow-hidden">
         {/* Header */}
-        <div className="p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-800 text-white rounded-t-3xl">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-3 text-xl font-bold">
-            <i className="fa-solid fa-id-card" />
+        <div className="px-6 py-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-800 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg font-bold shrink-0">
+              <i className="fa-solid fa-id-card" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold leading-tight">First-Time Sign In Setup</h2>
+              <p className="text-[11px] sm:text-xs text-blue-100/90 leading-tight">
+                Please complete your mandatory identity and emergency contact records.
+              </p>
+            </div>
           </div>
-          <h2 className="text-xl font-bold">First-Time Sign In Setup</h2>
-          <p className="text-xs text-blue-100/90 mt-1 leading-relaxed">
-            Welcome to the HRMS portal! Please complete your mandatory identity and emergency contact records.
-          </p>
+          <div className="hidden sm:block text-right">
+            <span className="text-[11px] bg-white/15 px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider text-blue-100">
+              Step 1 of 1
+            </span>
+          </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-3.5">
           {error && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-2">
+            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-2">
               <i className="fa-solid fa-triangle-exclamation text-sm shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Aadhaar Number */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-              Aadhaar Number *
-            </label>
-            <input
-              type="text"
-              required
-              maxLength={14}
-              placeholder="12-digit Aadhaar (e.g. 1234 5678 9012)"
-              value={form.aadhaar_number}
-              onChange={e => handleChange('aadhaar_number', e.target.value)}
-              className="w-full h-11 px-3.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50/60 font-mono"
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Left Column: Identity Details */}
+            <div className="space-y-3">
+              <p className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-100 pb-1">
+                <i className="fa-solid fa-user-check text-xs" />
+                Identity Details
+              </p>
 
-          {/* PAN Number */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-              PAN Card Number *
-            </label>
-            <input
-              type="text"
-              required
-              maxLength={10}
-              placeholder="10-character PAN (e.g. ABCDE1234F)"
-              value={form.pan_number}
-              onChange={e => handleChange('pan_number', e.target.value.toUpperCase())}
-              className="w-full h-11 px-3.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50/60 font-mono uppercase"
-            />
-          </div>
-
-          {/* Date of Birth */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-              Date of Birth *
-            </label>
-            <input
-              type="date"
-              required
-              value={form.date_of_birth}
-              onChange={e => handleChange('date_of_birth', e.target.value)}
-              className="w-full h-11 px-3.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50/60"
-            />
-          </div>
-
-          {/* Residential Address */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-              Residential Address *
-            </label>
-            <textarea
-              required
-              rows={2}
-              placeholder="Enter your complete residential address"
-              value={form.residential_address}
-              onChange={e => handleChange('residential_address', e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50/60 resize-none"
-            />
-          </div>
-
-          {/* Emergency Contact */}
-          <div className="pt-2 border-t border-gray-100 space-y-3">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Emergency Contact</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Aadhaar Number */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Contact Name *</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Aadhaar Number *
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Rajesh Sharma"
-                  value={form.emergency_contact_name}
-                  onChange={e => handleChange('emergency_contact_name', e.target.value)}
-                  className="w-full h-10 px-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 bg-slate-50/60"
+                  maxLength={14}
+                  placeholder="12-digit Aadhaar (e.g. 1234 5678 9012)"
+                  value={form.aadhaar_number}
+                  onChange={e => handleChange('aadhaar_number', e.target.value)}
+                  className="w-full h-9.5 px-3 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50 font-mono"
                 />
               </div>
+
+              {/* PAN Number */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Relationship *</label>
-                <select
-                  value={form.emergency_contact_relation}
-                  onChange={e => handleChange('emergency_contact_relation', e.target.value)}
-                  className="w-full h-10 px-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 bg-slate-50/60"
-                >
-                  {RELATIONSHIPS.map(rel => (
-                    <option key={rel} value={rel}>{rel}</option>
-                  ))}
-                </select>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  PAN Card Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={10}
+                  placeholder="10-character PAN (e.g. ABCDE1234F)"
+                  value={form.pan_number}
+                  onChange={e => handleChange('pan_number', e.target.value.toUpperCase())}
+                  className="w-full h-9.5 px-3 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50 font-mono uppercase"
+                />
+              </div>
+
+              {/* Date of Birth */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Date of Birth *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={form.date_of_birth}
+                  onChange={e => handleChange('date_of_birth', e.target.value)}
+                  className="w-full h-9.5 px-3 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50"
+                />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Emergency Phone Number *</label>
-              <input
-                type="tel"
-                required
-                placeholder="10-digit mobile number"
-                value={form.emergency_number}
-                onChange={e => handleChange('emergency_number', e.target.value)}
-                className="w-full h-10 px-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600 bg-slate-50/60"
-              />
+
+            {/* Right Column: Address & Emergency Contact */}
+            <div className="space-y-3">
+              <p className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-100 pb-1">
+                <i className="fa-solid fa-location-dot text-xs" />
+                Contact & Emergency
+              </p>
+
+              {/* Residential Address */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Residential Address *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter complete residential address"
+                  value={form.residential_address}
+                  onChange={e => handleChange('residential_address', e.target.value)}
+                  className="w-full h-9.5 px-3 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-indigo-600 focus:bg-white transition-all bg-slate-50"
+                />
+              </div>
+
+              {/* Emergency Contact Name & Relationship */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Emergency Contact *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contact Name"
+                    value={form.emergency_contact_name}
+                    onChange={e => handleChange('emergency_contact_name', e.target.value)}
+                    className="w-full h-9.5 px-3 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-indigo-600 bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Relationship *
+                  </label>
+                  <select
+                    value={form.emergency_contact_relation}
+                    onChange={e => handleChange('emergency_contact_relation', e.target.value)}
+                    className="w-full h-9.5 px-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-indigo-600 bg-slate-50"
+                  >
+                    {RELATIONSHIPS.map(rel => (
+                      <option key={rel} value={rel}>{rel}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Emergency Phone Number */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Emergency Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="10-digit mobile number"
+                  value={form.emergency_number}
+                  onChange={e => handleChange('emergency_number', e.target.value)}
+                  className="w-full h-9.5 px-3 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-indigo-600 bg-slate-50"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Notice about password */}
-          <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
-            <i className="fa-solid fa-lock text-amber-600 mt-0.5 shrink-0" />
-            <span>
-              <strong>Password Notice:</strong> Your login password is assigned and managed directly by HR. Employees cannot modify the password.
-            </span>
-          </div>
-
-          {/* Submit */}
-          <div className="pt-2">
-            <Button type="submit" loading={loading} className="w-full h-12 text-sm font-bold shadow-md">
+          {/* Footer bar: notice and action */}
+          <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+              <i className="fa-solid fa-lock text-amber-600 text-xs shrink-0" />
+              <span>Password is HR-managed and cannot be changed by employees.</span>
+            </div>
+            <Button
+              type="submit"
+              loading={loading}
+              className="w-full sm:w-auto px-6 h-10 text-xs font-bold shadow-md bg-indigo-600 hover:bg-indigo-700 shrink-0"
+            >
               Complete Setup & Access Portal
             </Button>
           </div>

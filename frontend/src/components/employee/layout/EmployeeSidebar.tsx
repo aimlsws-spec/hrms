@@ -24,11 +24,6 @@ const NAV_ITEMS = [
     icon: <i className="fa-solid fa-receipt w-4 text-center" />,
   },
   {
-    to: '/employee/documents',
-    label: 'Documents',
-    icon: <i className="fa-solid fa-file-lines w-4 text-center" />,
-  },
-  {
     to: '/employee/profile',
     label: 'My Profile',
     icon: <i className="fa-solid fa-circle-user w-4 text-center" />,

@@ -50,14 +50,13 @@ const STATUS_STYLES: Record<string, string> = {
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
-type TabId = 'personal' | 'job' | 'salary' | 'payslips' | 'documents'
+type TabId = 'personal' | 'job' | 'salary' | 'payslips'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'personal',  label: 'Personal',  icon: 'fa-solid fa-circle-user'          },
   { id: 'job',       label: 'Job',       icon: 'fa-solid fa-briefcase'            },
   { id: 'salary',    label: 'Salary',    icon: 'fa-solid fa-indian-rupee-sign'    },
   { id: 'payslips',  label: 'Payslips',  icon: 'fa-solid fa-file-invoice-dollar'  },
-  { id: 'documents', label: 'Documents', icon: 'fa-solid fa-folder-open'          },
 ]
 
 // ── Payslips tab — request-based, official Seawind Solutions format ────────────
@@ -134,7 +133,9 @@ function PayslipsTab({ employeeCode }: { employeeCode: string }) {
                     Issued {new Date(req.updated_at ?? req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
-                <DocStatusBadge status={req.status} />
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  <i className="fa-solid fa-check text-[9px]" /> Ready
+                </span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => window.open(buildSlipUrl(req), '_blank')}
@@ -167,110 +168,6 @@ const DOC_TYPES = [
   { value: 'relieving-letter',   label: 'Relieving Letter' },
   { value: 'appointment-letter', label: 'Appointment Letter' },
 ]
-
-const DOC_STATUS_STYLES: Record<DocumentRequestStatus, { cls: string; icon: string; label: string }> = {
-  pending:     { cls: 'bg-amber-100 text-amber-800 ring-1 ring-amber-300',      icon: 'fa-solid fa-clock',             label: 'Pending'            },
-  approved:    { cls: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300', icon: 'fa-solid fa-check',             label: 'Approved'           },
-  hr_approved: { cls: 'bg-teal-100 text-teal-700 ring-1 ring-teal-300',         icon: 'fa-solid fa-paper-plane',       label: 'Sent to Accountant' },
-  rejected:    { cls: 'bg-red-100 text-red-800 ring-1 ring-red-300',            icon: 'fa-solid fa-xmark',             label: 'Rejected'           },
-  generated:   { cls: 'bg-blue-100 text-blue-700',                              icon: 'fa-solid fa-file-circle-check', label: 'Generated'          },
-}
-
-function DocStatusBadge({ status }: { status: DocumentRequestStatus }) {
-  const s = DOC_STATUS_STYLES[status] ?? DOC_STATUS_STYLES.pending
-  return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.cls}`}>
-      <i className={`${s.icon} text-[9px]`} />{s.label}
-    </span>
-  )
-}
-
-function DocumentsTab({ employeeCode }: { employeeCode: string }) {
-  const {
-    requests, loading: reqLoading,
-  } = useMyDocumentRequests(employeeCode)
-
-  const [generatingId, setGeneratingId] = useState<number | null>(null)
-  const [genError,     setGenError]     = useState<string | null>(null)
-
-  const readyDocs = requests.filter(r => r.status === 'generated' || (r.status === 'approved' && (r.file_html || r.file_url)))
-
-  async function handleView(req: DocumentRequest) {
-    if (generatingId !== null) return
-    setGenError(null)
-    if (req.file_html) { openHtml(req.file_html, req.document_type); return }
-    if (req.file_url)  { window.open(req.file_url, '_blank'); return }
-    setGeneratingId(req.id)
-    try {
-      if (req.document_type === 'salary-slip') {
-        const { data } = await documentsApi.generateSalarySlip({ employee_id: employeeCode, month: now.getMonth() + 1, year: now.getFullYear() })
-        if (!data.success) { setGenError(data.message ?? 'Generation failed'); return }
-        if (data.html) openHtml(data.html, 'Salary Slip')
-      } else {
-        setGenError('Document not yet available. Please wait for HR to generate it.')
-      }
-    } catch { setGenError('Failed to load document') }
-    finally { setGeneratingId(null) }
-  }
-
-  return (
-    <div className="space-y-5">
-      {/* Informational Guidance */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs">
-        <i className="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5 shrink-0" />
-        <div>
-          <p className="font-semibold text-slate-800">HR Issued Documents</p>
-          <p className="text-slate-500 mt-0.5">
-            Official letters (Appointment, Offer, Experience, Relieving) and certificates are generated and issued directly by HR. Issued documents appear below.
-          </p>
-        </div>
-      </div>
-
-      {/* Generated docs */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Issued Documents</p>
-          {!reqLoading && readyDocs.length > 0 && (
-            <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
-              {readyDocs.length}
-            </span>
-          )}
-        </div>
-        {reqLoading ? (
-          <div className="space-y-2 p-4">{[0,1].map(i => <div key={i} className="h-12 bg-gray-50 rounded-xl animate-pulse" />)}</div>
-        ) : readyDocs.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-center px-4">
-            <i className="fa-solid fa-file-circle-check text-gray-200 text-[28px] mb-3" />
-            <p className="text-[13px] font-medium text-gray-400">No documents issued yet</p>
-            <p className="text-[11px] text-gray-400 mt-1">Official documents issued by HR will appear here</p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-gray-50">
-            {readyDocs.map(req => (
-              <li key={req.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                  <i className="fa-solid fa-file-circle-check text-blue-500 text-[12px]" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium text-gray-800">{DOC_TYPES.find(d => d.value === req.document_type)?.label ?? req.document_type}</p>
-                  <p className="text-[10px] text-gray-400">{new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                </div>
-                <DocStatusBadge status={req.status} />
-                <button onClick={() => handleView(req)} disabled={generatingId !== null}
-                  className="flex items-center gap-1.5 text-[11px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors shrink-0">
-                  {generatingId === req.id
-                    ? <><i className="fa-solid fa-circle-notch animate-spin text-[10px]" /> Loading…</>
-                    : <><i className="fa-solid fa-eye text-[10px]" /> View</>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {genError && <p className="text-[11px] text-red-500 flex items-center gap-1.5 px-5 py-3 border-t border-gray-50"><i className="fa-solid fa-circle-exclamation text-[10px]" />{genError}</p>}
-      </div>
-    </div>
-  )
-}
 
 // ── Sidebar avatar upload ─────────────────────────────────────────────────────
 
@@ -363,7 +260,7 @@ export default function MyProfilePage() {
 
   const [searchParams] = useSearchParams()
   const tabParam = searchParams.get('tab') as TabId | null
-  const validTabs: TabId[] = ['personal', 'job', 'salary', 'payslips', 'documents']
+  const validTabs: TabId[] = ['personal', 'job', 'salary', 'payslips']
   const [activeTab, setActiveTab] = useState<TabId>(
     tabParam && validTabs.includes(tabParam) ? tabParam : 'personal'
   )
@@ -534,10 +431,6 @@ export default function MyProfilePage() {
 
           {activeTab === 'payslips' && (
             <PayslipsTab employeeCode={employeeCode} />
-          )}
-
-          {activeTab === 'documents' && (
-            <DocumentsTab employeeCode={employeeCode} />
           )}
         </div>
       </div>

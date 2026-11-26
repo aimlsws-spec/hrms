@@ -28,7 +28,6 @@ import EmployeeDashboardPage    from '../pages/employee/EmployeeDashboardPage'
 import EmployeeAttendancePage   from '../pages/employee/EmployeeAttendancePage'
 import MyProfilePage            from '../pages/employee/MyProfilePage'
 import MyLeavePage              from '../pages/employee/MyLeavePage'
-import EmployeeDocumentsPage    from '../pages/employee/EmployeeDocumentsPage'
 import EmployeeExpensesPage     from '../pages/employee/EmployeeExpensesPage'
 import EmployeePayslipsPage     from '../pages/employee/EmployeePayslipsPage'
 import EmployeeSignupPage       from '../pages/employee/EmployeeSignupPage'
@@ -121,7 +120,7 @@ export const router = createBrowserRouter([
         { path: '/employee/attendance', element: <EmployeeAttendancePage /> },
         { path: '/employee/profile',    element: <MyProfilePage /> },
         { path: '/employee/expenses',   element: <EmployeeExpensesPage /> },
-        { path: '/employee/documents',  element: <EmployeeDocumentsPage /> },
+        { path: '/employee/documents',  element: <Navigate to="/employee/dashboard" replace /> },
         { path: '/employee/payslips',   element: <EmployeePayslipsPage /> },
       ],
     }],

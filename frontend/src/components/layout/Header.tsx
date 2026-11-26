@@ -17,7 +17,11 @@ export default function Header({ leftContent }: HeaderProps) {
 
   return (
     <header className="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-6 shadow-sm shrink-0">
-      {leftContent ?? <div />}
+      {leftContent ?? (
+        <div className="flex items-center gap-2">
+          <img src="/seawind-logo.png" alt="SeaWind" className="h-7 w-auto object-contain md:hidden" />
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <NotificationBell />

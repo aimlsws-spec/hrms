@@ -36,13 +36,17 @@ export default function EmployeeSidebar() {
   return (
     <aside className="w-56 h-screen bg-primary-900 text-white flex flex-col shrink-0">
       {/* Brand */}
-      <div className="px-5 h-14 flex items-center gap-2.5 border-b border-white/10">
-        <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
-          <i className="fa-solid fa-briefcase text-[11px] text-white" />
+      <div className="px-4 h-16 flex items-center gap-2.5 border-b border-white/10">
+        <div className="bg-white p-1 rounded-xl shadow-xs shrink-0 flex items-center justify-center">
+          <img
+            src="/seawind-logo.png"
+            alt="SeaWind"
+            className="w-9 h-7 object-contain"
+          />
         </div>
-        <div className="leading-none">
-          <p className="text-[13px] font-bold tracking-wide text-white">HRMS</p>
-          <p className="text-[10px] text-primary-300 mt-0.5">Employee Portal</p>
+        <div className="leading-tight min-w-0">
+          <p className="text-sm font-bold tracking-wide text-white truncate">SeaWind HRMS</p>
+          <p className="text-[10px] text-primary-300">Employee Portal</p>
         </div>
       </div>
 

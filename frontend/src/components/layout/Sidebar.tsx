@@ -135,13 +135,22 @@ export default function Sidebar({ navItems, brandingTitle, brandingSubtitle }: S
     <aside className="w-60 min-h-screen bg-primary-900 text-white flex flex-col shrink-0">
 
       {/* Branding */}
-      <div className="px-5 py-5 border-b border-white/10">
-        <h1 className="text-sm font-bold tracking-wide leading-tight text-white">
-          {brandingTitle ?? 'Seawind HRMS'}
-        </h1>
-        <p className="text-xs text-primary-300 mt-0.5">
-          {brandingSubtitle ?? 'Human Resources'}
-        </p>
+      <div className="px-5 py-4 border-b border-white/10 flex items-center gap-3">
+        <div className="bg-white p-1 rounded-xl shadow-xs shrink-0 flex items-center justify-center">
+          <img
+            src="/seawind-logo.png"
+            alt="SeaWind"
+            className="w-10 h-7 object-contain"
+          />
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-sm font-bold tracking-wide leading-tight text-white truncate">
+            {brandingTitle ?? 'SeaWind HRMS'}
+          </h1>
+          <p className="text-[11px] text-primary-300 truncate">
+            {brandingSubtitle ?? 'Admin & HR Portal'}
+          </p>
+        </div>
       </div>
 
       {/* Navigation */}

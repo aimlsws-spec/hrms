@@ -1,6 +1,6 @@
 """
 Mailer module for Seawind Solution HRMS.
-Handles dispatching email notifications, invitations, and OTPs via SMTP.
+Handles dispatching email notifications, invitations, and OTPs via SMTP with the official company logo.
 """
 
 import os
@@ -21,9 +21,12 @@ EMAIL_USER = os.getenv("EMAIL_USER", "info@seawindsolution.in")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "$w$InfO2026")
 APP_URL = os.getenv("APP_URL", os.getenv("FRONTEND_URL", "http://localhost:3000"))
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOGO_PATH = os.path.join(BASE_DIR, "images", "seawind_logo.png")
 
-def send_raw_email(to_email: str, subject: str, html_content: str, text_content: str = "") -> dict:
-    """Send an email using SMTP (SSL for 465, STARTTLS for 587)."""
+
+def send_raw_email(to_email: str, subject: str, html_content: str, text_content: str = "", attach_logo: bool = True) -> dict:
+    """Send an email using SMTP (SSL for 465, STARTTLS for 587) with optional inline logo attachment."""
     if not to_email or "@" not in to_email:
         return {"success": False, "error": f"Invalid recipient email: {to_email}"}
 
@@ -41,6 +44,21 @@ def send_raw_email(to_email: str, subject: str, html_content: str, text_content:
             msg.set_content("Please view this email in an HTML-compatible email reader.")
 
         msg.add_alternative(html_content, subtype="html")
+
+        # Attach inline company logo if present so clients render it via cid:seawind_logo
+        if attach_logo and os.path.exists(LOGO_PATH):
+            try:
+                with open(LOGO_PATH, "rb") as f:
+                    logo_bytes = f.read()
+                # The html part is at index 1
+                msg.get_payload()[1].add_related(
+                    logo_bytes,
+                    maintype="image",
+                    subtype="png",
+                    cid="<seawind_logo>",
+                )
+            except Exception as att_err:
+                logger.warning("Could not attach inline logo: %s", att_err)
 
         if SMTP_PORT == 465:
             with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=12) as server:
@@ -69,7 +87,7 @@ def build_invitation_html(
     title: str = "",
     login_url: str = "",
 ) -> str:
-    """Build a professional, modern invitation email HTML body."""
+    """Build a professional, modern invitation email HTML body with official company logo."""
     target_url = login_url or f"{APP_URL.rstrip('/')}/login"
 
     dept_row = f"""
@@ -98,14 +116,14 @@ def build_invitation_html(
         <tr>
             <td align="center">
                 <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
-                    <!-- Brand Header -->
+                    <!-- Brand Header with Official Logo -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 32px 30px; text-align: center;">
-                            <div style="display: inline-block; width: 44px; height: 44px; line-height: 44px; background: rgba(255,255,255,0.15); border-radius: 12px; margin-bottom: 12px;">
-                                <span style="color: #ffffff; font-size: 22px;">🏢</span>
+                        <td style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 28px 24px; text-align: center;">
+                            <div style="background-color: #ffffff; display: inline-block; padding: 8px 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px;">
+                                <img src="cid:seawind_logo" alt="SeaWind - Regeneration of IT Services" width="160" style="display: block; width: 160px; max-width: 100%; height: auto; border: 0;" />
                             </div>
-                            <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">Seawind Solution</h1>
-                            <p style="margin: 4px 0 0 0; color: #93c5fd; font-size: 13px; font-weight: 500;">Human Resource Management System</p>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Seawind Solution HRMS</h1>
+                            <p style="margin: 4px 0 0 0; color: #bfdbfe; font-size: 13px; font-weight: 500;">Regeneration of IT Services</p>
                         </td>
                     </tr>
 
@@ -182,6 +200,66 @@ def build_invitation_html(
 </html>"""
 
 
+def build_otp_html(otp: str) -> str:
+    """Build a professional, branded OTP verification email HTML body."""
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seawind Solution HRMS - Your Login OTP</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 30px 15px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" style="max-width: 520px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+                    <!-- Brand Header with Official Logo -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 28px 24px; text-align: center;">
+                            <div style="background-color: #ffffff; display: inline-block; padding: 8px 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px;">
+                                <img src="cid:seawind_logo" alt="SeaWind - Regeneration of IT Services" width="150" style="display: block; width: 150px; max-width: 100%; height: auto; border: 0;" />
+                            </div>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: -0.5px;">Seawind Solution HRMS</h1>
+                            <p style="margin: 4px 0 0 0; color: #bfdbfe; font-size: 13px; font-weight: 500;">One-Time Password (OTP) Verification</p>
+                        </td>
+                    </tr>
+
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="padding: 32px 30px; text-align: center;">
+                            <h2 style="margin: 0 0 10px 0; color: #0f172a; font-size: 18px; font-weight: 700;">Verify Your Sign In</h2>
+                            <p style="margin: 0 0 24px 0; color: #475569; font-size: 14px; line-height: 1.6;">
+                                Please use the following One-Time Password (OTP) to complete your secure sign-in to the portal:
+                            </p>
+
+                            <!-- OTP Box -->
+                            <div style="background-color: #f8fafc; border: 2px dashed #93c5fd; border-radius: 12px; padding: 18px 24px; margin: 20px auto; display: inline-block;">
+                                <span style="font-size: 34px; font-weight: 800; letter-spacing: 10px; color: #1e40af; font-family: monospace;">{otp}</span>
+                            </div>
+
+                            <p style="margin: 20px 0 0 0; color: #64748b; font-size: 12px; line-height: 1.5;">
+                                This code is strictly confidential and will expire shortly. Do not share your OTP with anyone.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+                            <p style="margin: 0; color: #94a3b8; font-size: 11px;">
+                                This is an automated message from the Seawind Solution HRMS. Please do not reply.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+
 def send_employee_invitation(
     full_name: str,
     email: str,
@@ -192,7 +270,7 @@ def send_employee_invitation(
     title: str = "",
     login_url: str = "",
 ) -> dict:
-    """Send an employee invitation email with their assigned credentials."""
+    """Send an employee invitation email with their assigned credentials and official logo."""
     subject = "Welcome to Seawind Solution - Your HRMS Login Credentials & Invitation"
     html_content = build_invitation_html(
         full_name=full_name,
@@ -219,7 +297,15 @@ def send_employee_invitation(
         f"Best regards,\nHR Department\nSeawind Solution\n{EMAIL_USER}"
     )
 
-    return send_raw_email(to_email=email, subject=subject, html_content=html_content, text_content=text_content)
+    return send_raw_email(to_email=email, subject=subject, html_content=html_content, text_content=text_content, attach_logo=True)
+
+
+def send_otp_email(to_email: str, otp: str) -> dict:
+    """Send an OTP email with the official company logo."""
+    subject = "Seawind Solution HRMS - Your Login OTP"
+    html_content = build_otp_html(otp=otp)
+    text_content = f"Your Seawind Solution HRMS login OTP is: {otp}. This code is confidential."
+    return send_raw_email(to_email=to_email, subject=subject, html_content=html_content, text_content=text_content, attach_logo=True)
 
 
 def send_invitation_in_background(

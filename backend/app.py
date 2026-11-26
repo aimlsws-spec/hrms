@@ -1160,67 +1160,20 @@ async def login(request: LoginRequest):
             user_email = user.get('email')
             if user_email:
                 try:
-                    from email.utils import make_msgid, formatdate
-                    
-                    msg = EmailMessage()
-                    msg["Subject"] = "Seawind Solution HRMS - Your OTP"
-                    msg["From"] = os.getenv("EMAIL_USER", "info@seawindsolution.in")
-                    msg["To"] = user_email
-                    msg["Message-ID"] = make_msgid()
-                    msg["Date"] = formatdate(localtime=True)
-
-                    
-                    # Use HTML formatting to prevent webmail outgoing spam filters from blocking it
-                    html_content = f"""
-                    <html>
-                        <body style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                            <h2 style="color: #1e40af;">Seawind Solution HRMS</h2>
-                            <p>Hello,</p>
-                            <p>You have requested to log in to your account. Please use the following One-Time Password (OTP) to complete your secure login:</p>
-                            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                                <h1 style="letter-spacing: 5px; margin: 0; color: #1f2937;">{otp}</h1>
-                            </div>
-                            <p>This code is strictly confidential. Do not share it with anyone.</p>
-                            <p style="margin-top: 30px; font-size: 12px; color: #6b7280;">
-                                This is an automated message from the Seawind Solution HRMS system. Please do not reply to this email.
-                            </p>
-                        </body>
-                    </html>
-                    """
-                    msg.set_content("Your OTP for login is: " + otp) # Plaintext fallback
-                    msg.add_alternative(html_content, subtype='html')
-                    
-                    # Log to console so it can be used during local testing if SMTP isn't configured yet
+                    from backend.core.mailer import send_otp_email
                     print(f"\n==========================================")
                     print(f"OTP GENERATED FOR {user_email}: {otp}")
                     print(f"==========================================\n")
-                    
-                    smtp_host = os.getenv("SMTP_SERVER", os.getenv("SMTP_HOST", "localhost"))
-                    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-                    smtp_user = os.getenv("EMAIL_USER", os.getenv("SMTP_USER", ""))
-                    smtp_pass = os.getenv("EMAIL_PASSWORD", os.getenv("SMTP_PASS", ""))
-                    
-                    print(f"Attempting to send OTP via SMTP...")
-                    print(f"Host: {smtp_host}, Port: {smtp_port}, User: {smtp_user}")
-                    
-                    if smtp_port == 465:
-                        # Use direct SSL for port 465
-                        with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
-                            if smtp_user and smtp_pass:
-                                server.login(smtp_user, smtp_pass)
-                            server.send_message(msg)
+
+                    mail_res = send_otp_email(to_email=user_email, otp=otp)
+                    email_sent = mail_res.get("success", False)
+                    if email_sent:
+                        print("OTP Email successfully dispatched with official logo!")
                     else:
-                        # Use STARTTLS for 587 or 25
-                        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-                            if smtp_user and smtp_pass:
-                                server.starttls()
-                                server.login(smtp_user, smtp_pass)
-                            server.send_message(msg)
-                    print("Email successfully dispatched to SMTP server!"); email_sent = True
+                        print(f"SMTP dispatch note: {mail_res.get('error')}")
                 except Exception as e:
                     print(f"==========================================")
-                    print(f"CRITICAL ERROR: Failed to send OTP email!")
-                    print(f"Error Details: {e}")
+                    print(f"CRITICAL ERROR: Failed to send OTP email: {e}")
                     print(f"==========================================")
             
             email_sent = 'email_sent' in locals() and email_sent

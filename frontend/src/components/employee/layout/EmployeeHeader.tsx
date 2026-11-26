@@ -15,8 +15,9 @@ export default function EmployeeHeader() {
     <header className="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-6 shrink-0">
       {/* Left: page breadcrumb feel */}
       <div className="flex items-center gap-2 text-sm text-gray-400">
-        <i className="fa-solid fa-house text-xs text-gray-300" />
-        <span className="text-gray-300">/</span>
+        <img src="/seawind-logo.png" alt="SeaWind" className="h-6 w-auto object-contain md:hidden" />
+        <i className="fa-solid fa-house text-xs text-gray-300 hidden md:inline" />
+        <span className="text-gray-300 hidden md:inline">/</span>
         <span className="text-gray-600 font-medium">Employee Portal</span>
       </div>
 

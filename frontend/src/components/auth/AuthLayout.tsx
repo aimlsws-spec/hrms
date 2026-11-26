@@ -26,12 +26,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="hidden md:flex flex-col justify-center items-center px-8 py-10 text-white bg-primary-900/95 relative overflow-hidden">
           <div className="absolute w-72 h-72 rounded-full bg-white/10 -top-24 -right-24 pointer-events-none" />
           {!logoError && (
-            <img
-              src="/trademark-logo-new.png"
-              alt="Seawind Solutions Logo"
-              className="w-[125px] h-auto mb-8 rounded-xl object-contain drop-shadow-2xl"
-              onError={() => setLogoError(true)}
-            />
+            <div className="bg-white p-3.5 rounded-2xl shadow-2xl mb-6 flex items-center justify-center max-w-[210px]">
+              <img
+                src="/seawind-logo.png"
+                alt="SeaWind - Regeneration of IT Services"
+                className="w-full h-auto object-contain"
+                onError={() => setLogoError(true)}
+              />
+            </div>
           )}
           <h2 className="text-2xl font-extrabold mb-4 text-center drop-shadow">
             Seawind Solution HRMS

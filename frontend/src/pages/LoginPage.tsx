@@ -132,6 +132,17 @@ export default function LoginPage() {
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <AuthLayout>
+      {/* Mobile-only brand logo */}
+      <div className="md:hidden flex justify-center mb-6">
+        <div className="bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center max-w-[170px]">
+          <img
+            src="/seawind-logo.png"
+            alt="SeaWind"
+            className="w-full h-auto object-contain"
+          />
+        </div>
+      </div>
+
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-2xl font-extrabold text-primary-900 mb-2">

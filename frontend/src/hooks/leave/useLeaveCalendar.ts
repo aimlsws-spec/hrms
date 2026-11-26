@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { leavesApi } from '../../api/leaves'
 import type { CalendarData } from '../../types/leave'
 
-export function useLeaveCalendar(userId: number | null) {
+export function useLeaveCalendar(userId: number | string | null) {
   const now = new Date()
   const [year, setYear]   = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -10,12 +10,19 @@ export function useLeaveCalendar(userId: number | null) {
   const [isLoading, setIsLoading] = useState(false)
 
   const load = useCallback(async (y: number, m: number) => {
-    if (!userId) return
+    const targetId = userId ?? 'all'
     setIsLoading(true)
     try {
-      const { data: res } = await leavesApi.getCalendar(userId, y, m)
+      const { data: res } = await leavesApi.getCalendar(targetId, y, m)
       if (res.success) {
-        setData({ leaves: res.leaves ?? [], holidays: res.holidays ?? [], saturdays: res.saturdays ?? [] })
+        setData({
+          leaves: res.leaves ?? [],
+          holidays: res.holidays ?? [],
+          saturdays: res.saturdays ?? res.second_and_fourth_saturdays ?? [],
+          second_and_fourth_saturdays: res.second_and_fourth_saturdays ?? res.saturdays ?? [],
+          sundays: res.sundays ?? [],
+          all_saturdays: res.all_saturdays ?? [],
+        })
       }
     } catch {
       // network error — leave data null, calendar renders empty

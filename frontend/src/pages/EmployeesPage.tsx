@@ -2,6 +2,7 @@ import { useState }           from 'react'
 import { useAuthStore }       from '../store/authStore'
 import { useEmployees }       from '../hooks/employees/useEmployees'
 import { useEmployeeForm }    from '../hooks/employees/useEmployeeForm'
+import { employeesApi }       from '../api/employees'
 import type { Employee }      from '../types/employee'
 import Card                   from '../components/ui/Card'
 import ErrorAlert             from '../components/ui/ErrorAlert'
@@ -28,6 +29,19 @@ export default function EmployeesPage() {
 
   // ── Profile view modal ────────────────────────────────────────────────
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null)
+
+  async function handleToggleStatus(emp: Employee, newActive: boolean) {
+    try {
+      const res = await employeesApi.toggleStatus(emp.employee_id, newActive)
+      if (res.data?.success) {
+        refetch()
+      } else {
+        alert(res.data?.message || 'Failed to update employee status')
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error updating employee status')
+    }
+  }
 
   return (
     <div>
@@ -58,6 +72,7 @@ export default function EmployeesPage() {
           isLoading={isLoading}
           onEdit={openEdit}
           onView={setViewingEmployee}
+          onToggleStatus={handleToggleStatus}
           canEdit={canEdit}
         />
       </Card>

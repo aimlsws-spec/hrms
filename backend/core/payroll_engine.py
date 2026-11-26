@@ -154,6 +154,46 @@ def get_late_arrival_summary(employee_id: str, month: int, year: int,
     }
 
 
+def get_leave_deduction_summary(employee_id: str, month: int, year: int,
+                                monthly_salary: float, unpaid_days: float, cur) -> dict:
+    """Check if HR has approved unpaid leave salary deduction.
+
+    Rule: Every salary deduction requires HR approval except company-policy PT (₹200).
+    Until HR explicitly approves (status = 'APPLIED'), leave_deduction = 0.00.
+    """
+    if not unpaid_days or unpaid_days <= 0:
+        return {"leave_deduction": 0.0, "review_status": "NONE"}
+
+    cur.execute("""
+        SELECT amount, status
+        FROM attendance_deductions
+        WHERE employee_id = %s AND year = %s AND month = %s AND deduction_type = 'UNPAID_LEAVE'
+        ORDER BY id DESC LIMIT 1
+    """, (employee_id, year, month))
+    row = cur.fetchone()
+
+    total_days_m = total_days_in_month(year, month)
+    daily = monthly_salary / total_days_m if total_days_m else 0.0
+    calc_amt = round(daily * unpaid_days, 2)
+
+    if row and row.get("status") == "APPLIED":
+        return {
+            "leave_deduction": float(row.get("amount") or calc_amt),
+            "review_status": "APPLIED",
+        }
+    elif row and row.get("status") == "IGNORED":
+        return {
+            "leave_deduction": 0.0,
+            "review_status": "IGNORED",
+        }
+    else:
+        # Awaiting HR review (PENDING_REVIEW or unreviewed): ₹0 deducted until approved!
+        return {
+            "leave_deduction": 0.0,
+            "review_status": "PENDING_REVIEW",
+        }
+
+
 def leave_portion_for_month(employee_id: str, month: int, year: int, cur) -> dict:
     """
     Approved leave that falls INSIDE the given month, split by calendar day.
@@ -252,9 +292,10 @@ def compute(employee_id: str, month: int, year: int,
 
         leave      = get_leave_summary(employee_id, month, year, cur)
         late_info  = get_late_arrival_summary(employee_id, month, year, monthly, cur)
+        leave_info = get_leave_deduction_summary(employee_id, month, year, monthly, leave["unpaid_days"], cur)
         total_days = total_days_in_month(year, month)
         daily      = calc_daily_salary(monthly, year, month)
-        leave_ded  = calc_leave_deduction(monthly, leave["unpaid_days"], year, month)
+        leave_ded  = leave_info["leave_deduction"]
         late_ded   = late_info["late_arrival_deduction"]
         net        = round(max(0.0,
                        monthly - PROFESSIONAL_TAX - leave_ded - late_ded), 2)
@@ -283,9 +324,11 @@ def compute(employee_id: str, month: int, year: int,
             "unpaid_days":            leave["unpaid_days"],
             "paid_leave_used":        leave["paid_leave_used"],
             "leave_deduction":        leave_ded,
+            "leave_deduction_status": leave_info["review_status"],
             "grace_late_count":       late_info["grace_late_count"],
             "late_deductions_applied": late_info["deductions_applied"],
             "late_arrival_deduction": late_ded,
+            "late_deduction_status":  late_info["review_status"],
             "net_salary":             net,
         }
     finally:

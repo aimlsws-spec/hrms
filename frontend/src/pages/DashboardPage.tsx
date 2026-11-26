@@ -9,6 +9,7 @@ import RecentEmployeesTable    from '../components/dashboard/RecentEmployeesTabl
 import AnnouncementsPanel      from '../components/dashboard/AnnouncementsPanel'
 import CreateAnnouncementForm  from '../components/dashboard/CreateAnnouncementForm'
 import PendingLeavesPanel      from '../components/dashboard/PendingLeavesPanel'
+import SalaryDeductionsReviewPanel from '../components/dashboard/SalaryDeductionsReviewPanel'
 import LeaveBalanceWidget      from '../components/dashboard/LeaveBalanceWidget'
 import LeaveCalendar           from '../components/dashboard/LeaveCalendar'
 
@@ -138,10 +139,13 @@ export default function DashboardPage() {
             error={annError}
           />
           {isAdminOrHR && (
-            <PendingLeavesPanel
-              requests={pendingRequests}
-              isLoading={pendingLoading}
-            />
+            <>
+              <PendingLeavesPanel
+                requests={pendingRequests}
+                isLoading={pendingLoading}
+              />
+              <SalaryDeductionsReviewPanel />
+            </>
           )}
         </div>
 

@@ -3,8 +3,10 @@ import { useAuthStore } from '../../store/authStore'
 import { useLeaveBalance } from '../../hooks/useLeaveBalance'
 import { useUnpaidLeaveCheck } from '../../hooks/leave/useUnpaidLeaveCheck'
 import { useUnpaidLeaveTaken } from '../../hooks/leave/useUnpaidLeaveTaken'
+import { useLeaveCalendar } from '../../hooks/leave/useLeaveCalendar'
 import { leavesApi } from '../../api/leaves'
 import LeaveBalanceCard from '../../components/employee/dashboard/LeaveBalanceCard'
+import ModernLeaveCalendar from '../../components/common/ModernLeaveCalendar'
 import type { LeaveDuration, LeaveRequest } from '../../types/leave'
 
 function toEmployeeCode(userId: number | string | undefined): string {
@@ -22,8 +24,19 @@ export default function MyLeavePage() {
   const { balance, total, isLoading: balanceLoading } = useLeaveBalance(employeeCode)
   const { unpaidDaysTaken, isLoading: unpaidLoading } = useUnpaidLeaveTaken(user?.user_id ?? null)
   
+  const [rightTab, setRightTab] = useState<'calendar' | 'history'>('calendar')
   const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [loadingRequests, setLoadingRequests] = useState(true)
+
+  // Calendar hook for this employee
+  const {
+    year: calYear,
+    month: calMonth,
+    data: calData,
+    isLoading: calLoading,
+    prevMonth: calPrevMonth,
+    nextMonth: calNextMonth,
+  } = useLeaveCalendar(employeeCode || user?.user_id || 'all')
   
   // Form State
   const [leaveType, setLeaveType] = useState('Casual Leave')
@@ -266,69 +279,110 @@ export default function MyLeavePage() {
           </div>
         </div>
 
-        {/* Right Column: Leave History */}
-        <div className="flex flex-col h-full">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="p-5 border-b border-slate-100">
-              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <i className="fa-solid fa-clock-rotate-left text-blue-500 text-sm" />
-                Leave History
-              </h2>
-            </div>
-            
-            <div className="flex-1 overflow-auto p-5">
-              {loadingRequests ? (
-                <div className="p-8 text-center text-slate-400">Loading history...</div>
-              ) : requests.length === 0 ? (
-                <div className="p-12 text-center text-slate-500">
-                  <i className="fa-solid fa-folder-open text-3xl text-slate-300 mb-3" />
-                  <p>No leave requests found</p>
-                </div>
-                ) : (
-                <div>
-                  <table className="w-full table-auto text-left text-sm text-slate-600">
-                    <thead className="bg-slate-50 text-slate-500 font-semibold text-xs uppercase tracking-wide">
-                      <tr>
-                        <th className="px-5 py-4 border-b border-slate-100">Date Range</th>
-                        <th className="px-5 py-4 border-b border-slate-100">Leave Type</th>
-                        <th className="px-5 py-4 border-b border-slate-100">Duration</th>
-                        <th className="px-5 py-4 border-b border-slate-100">Reason</th>
-                        <th className="px-5 py-4 border-b border-slate-100 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {requests.map(req => (
-                        <tr key={req.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            {req.start_date} <span className="text-slate-300 mx-1">→</span> {req.end_date}
-                          </td>
-                          <td className="px-5 py-4 font-medium text-slate-700 whitespace-nowrap">
-                            {req.leave_type}
-                          </td>
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            {req.leave_duration === 'first_half'
-                              ? <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-100">First Half</span>
-                              : req.leave_duration === 'second_half'
-                              ? <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-100">Second Half</span>
-                              : <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-500 border border-slate-100">Full Day</span>
-                            }
-                          </td>
-                          <td className="px-5 py-4 text-gray-600 whitespace-normal break-words" title={req.reason}>
-                            {req.reason || '-'}
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusColor(req.status)}`}>
-                              {req.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+        {/* Right Column: Calendar & Leave History */}
+        <div className="flex flex-col h-full space-y-4">
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+            <button
+              type="button"
+              onClick={() => setRightTab('calendar')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                rightTab === 'calendar'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <i className="fa-solid fa-calendar-days" />
+              Calendar & Holidays
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightTab('history')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                rightTab === 'history'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <i className="fa-solid fa-clock-rotate-left" />
+              Leave History ({requests.length})
+            </button>
           </div>
+
+          {rightTab === 'calendar' ? (
+            <ModernLeaveCalendar
+              year={calYear}
+              month={calMonth}
+              data={calData}
+              isLoading={calLoading}
+              onPrevMonth={calPrevMonth}
+              onNextMonth={calNextMonth}
+              title="My Calendar & Official Holidays"
+              subtitle="All Sundays and 2nd & 4th Saturdays are observed company holidays. Click any day to view details."
+            />
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="p-5 border-b border-slate-100">
+                <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <i className="fa-solid fa-clock-rotate-left text-blue-500 text-sm" />
+                  Leave Request History
+                </h2>
+              </div>
+              
+              <div className="flex-1 overflow-auto p-5">
+                {loadingRequests ? (
+                  <div className="p-8 text-center text-slate-400">Loading history...</div>
+                ) : requests.length === 0 ? (
+                  <div className="p-12 text-center text-slate-500">
+                    <i className="fa-solid fa-folder-open text-3xl text-slate-300 mb-3" />
+                    <p>No leave requests found</p>
+                  </div>
+                ) : (
+                  <div>
+                    <table className="w-full table-auto text-left text-sm text-slate-600">
+                      <thead className="bg-slate-50 text-slate-500 font-semibold text-xs uppercase tracking-wide">
+                        <tr>
+                          <th className="px-5 py-4 border-b border-slate-100">Date Range</th>
+                          <th className="px-5 py-4 border-b border-slate-100">Leave Type</th>
+                          <th className="px-5 py-4 border-b border-slate-100">Duration</th>
+                          <th className="px-5 py-4 border-b border-slate-100">Reason</th>
+                          <th className="px-5 py-4 border-b border-slate-100 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {requests.map(req => (
+                          <tr key={req.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              {req.start_date} <span className="text-slate-300 mx-1">→</span> {req.end_date}
+                            </td>
+                            <td className="px-5 py-4 font-medium text-slate-700 whitespace-nowrap">
+                              {req.leave_type}
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              {req.leave_duration === 'first_half'
+                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-100">First Half</span>
+                                : req.leave_duration === 'second_half'
+                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-100">Second Half</span>
+                                : <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-500 border border-slate-100">Full Day</span>
+                              }
+                            </td>
+                            <td className="px-5 py-4 text-gray-600 whitespace-normal break-words" title={req.reason}>
+                              {req.reason || '-'}
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusColor(req.status)}`}>
+                                {req.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

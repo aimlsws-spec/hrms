@@ -196,7 +196,14 @@ export default function HRYearlyBalancesTab() {
                   return (
                     <tr key={b.employee_id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-gray-900">{b.name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-gray-900">{b.name}</span>
+                          {((b as any).status === 'probation' || (cTot === 0 && sTot === 0 && eTot === 0)) && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              Probation
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-gray-400 font-mono">{b.employee_id}</div>
                       </td>
                       <td className="px-3 py-3">

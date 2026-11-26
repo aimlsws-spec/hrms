@@ -16,59 +16,215 @@ def get_db():
 
 # ==================== EMPLOYEE MANAGEMENT ====================
 
-def edit_employee(employee_id: str, data: dict):
-    """Edit employee details"""
+def edit_employee(employee_id: str, data: dict, actor: str = "HR Admin", client_ip: str = "127.0.0.1"):
+    """Edit employee details and handle probation <-> employment transition"""
     try:
         conn = get_db()
-        cursor = conn.cursor()
-        
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute(
+            "SELECT employee_code, full_name, email, status FROM employees WHERE employee_code = %s OR employee_id = %s LIMIT 1",
+            (employee_id, employee_id)
+        )
+        emp_row = cursor.fetchone()
+        if not emp_row:
+            cursor.close(); conn.close()
+            return {"success": False, "message": "Employee not found"}
+
+        emp_code = emp_row.get("employee_code") or employee_id
+        emp_name = emp_row.get("full_name") or employee_id
+        prev_status = (emp_row.get("status") or "").strip().lower()
+
         fields = []
         values = []
-        
-        if 'name' in data:
-            fields.append("name=%s")
+
+        if 'name' in data and data['name']:
+            fields.append("full_name=%s")
             values.append(data['name'])
-        if 'email' in data:
+        if 'full_name' in data and data['full_name']:
+            fields.append("full_name=%s")
+            values.append(data['full_name'])
+        if 'email' in data and data['email']:
             fields.append("email=%s")
             values.append(data['email'])
         if 'phone' in data:
             fields.append("phone=%s")
             values.append(data['phone'])
-        if 'department' in data:
+        if 'department' in data and data['department']:
             fields.append("department=%s")
             values.append(data['department'])
-        if 'designation' in data:
-            fields.append("designation=%s")
-            values.append(data['designation'])
+        if 'designation' in data or 'title' in data:
+            title_val = data.get('designation') or data.get('title')
+            if title_val:
+                fields.append("title=%s")
+                values.append(title_val)
         if 'reporting_manager' in data:
             fields.append("reporting_manager=%s")
             values.append(data['reporting_manager'])
-        if 'joining_date' in data:
+        if 'joining_date' in data and data['joining_date']:
             fields.append("joining_date=%s")
             values.append(data['joining_date'])
-        if 'probation_end_date' in data:
-            fields.append("probation_end_date=%s")
-            values.append(data['probation_end_date'])
-        
-        values.append(employee_id)
-        query = f"UPDATE employees SET {', '.join(fields)} WHERE employee_id=%s"
-        cursor.execute(query, tuple(values))
+
+        new_status = data.get('status')
+        status_transitioned_to_employment = False
+        status_transitioned_to_probation = False
+
+        if new_status:
+            normalized_status = str(new_status).strip().lower()
+            if normalized_status in ('employment', 'active', 'confirmed'):
+                normalized_status = 'active'
+                if prev_status == 'probation':
+                    status_transitioned_to_employment = True
+            elif normalized_status == 'probation':
+                if prev_status != 'probation':
+                    status_transitioned_to_probation = True
+
+            fields.append("status=%s")
+            values.append(normalized_status)
+
+        if fields:
+            values.append(emp_code)
+            values.append(employee_id)
+            query = f"UPDATE employees SET {', '.join(fields)} WHERE employee_code=%s OR employee_id=%s"
+            cursor.execute(query, tuple(values))
+
+        # Handle probation to employment transition:
+        # "When HR changes the employee status from Probation to Employment, applicable leave balances become available automatically."
+        if status_transitioned_to_employment:
+            cur_year = datetime.now().year
+            cursor.execute("""
+                INSERT INTO leave_balance
+                    (employee_id, year, casual_leave, sick_leave, earned_leave, casual_total, sick_total, earned_total)
+                VALUES (%s, %s, 12.00, 12.00, 12.00, 12.00, 12.00, 12.00)
+                ON DUPLICATE KEY UPDATE
+                    year = VALUES(year), casual_leave = 12.00, sick_leave = 12.00, earned_leave = 12.00,
+                    casual_total = 12.00, sick_total = 12.00, earned_total = 12.00
+            """, (emp_code, cur_year))
+
+            # Notify employee
+            cursor.execute("""
+                INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                VALUES (%s, %s, %s, 'LEAVE_BALANCE_ACTIVATED', 0, NOW())
+            """, (
+                emp_code,
+                "Employment Confirmed — Leave Balances Activated",
+                "Congratulations! Your employment status has been confirmed. Your yearly leave balances (12 Casual, 12 Sick, 12 Paid leaves) are now active and available for use."
+            ))
+
+            # Log HR activity
+            try:
+                from backend.core.hr_activity_logger import log_hr_activity
+                log_hr_activity(
+                    performed_by=actor,
+                    performed_name=actor,
+                    action="EMPLOYMENT_CONFIRMED",
+                    target_employee_id=emp_code,
+                    target_employee_name=emp_name,
+                    details=f"Changed employment status from Probation to Employment for {emp_name} ({emp_code}). Yearly leave balances (12 CL, 12 SL, 12 PL) credited automatically.",
+                    ip_address=client_ip
+                )
+            except Exception:
+                pass
+
+        elif status_transitioned_to_probation:
+            cur_year = datetime.now().year
+            cursor.execute("""
+                INSERT INTO leave_balance
+                    (employee_id, year, casual_leave, sick_leave, earned_leave, casual_total, sick_total, earned_total)
+                VALUES (%s, %s, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00)
+                ON DUPLICATE KEY UPDATE
+                    year = VALUES(year), casual_leave = 0.00, sick_leave = 0.00, earned_leave = 0.00,
+                    casual_total = 0.00, sick_total = 0.00, earned_total = 0.00
+            """, (emp_code, cur_year))
+
+            try:
+                from backend.core.hr_activity_logger import log_hr_activity
+                log_hr_activity(
+                    performed_by=actor,
+                    performed_name=actor,
+                    action="STATUS_CHANGED_TO_PROBATION",
+                    target_employee_id=emp_code,
+                    target_employee_name=emp_name,
+                    details=f"Set employee status to Probation for {emp_name} ({emp_code}). Leave balances set to 0.00.",
+                    ip_address=client_ip
+                )
+            except Exception:
+                pass
+
+        # Update annual CTC if provided
+        if 'annual_ctc' in data and data['annual_ctc'] is not None:
+            try:
+                ctc_val = float(data['annual_ctc'])
+                cursor.execute("""
+                    INSERT INTO employee_salaries (employee_id, gross_salary, ctc, status, effective_from)
+                    VALUES (%s, %s, %s, 'active', CURDATE())
+                    ON DUPLICATE KEY UPDATE gross_salary = VALUES(gross_salary), ctc = VALUES(ctc)
+                """, (emp_code, round(ctc_val / 12, 2), ctc_val))
+            except Exception:
+                pass
+
         conn.commit()
+        cursor.close()
         conn.close()
-        return {"success": True, "message": "Employee updated"}
+        return {"success": True, "message": "Employee updated successfully"}
     except Exception as e:
         return {"success": False, "message": str(e)}
 
-def toggle_employee_status(employee_id: str, is_active: bool):
-    """Activate/Deactivate employee"""
+def toggle_employee_status(employee_id: str, is_active: bool, actor: str = "HR Admin", client_ip: str = "127.0.0.1"):
+    """Activate/Deactivate employee account in both employees and users tables."""
     try:
         conn = get_db()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         status = 'active' if is_active else 'inactive'
-        cursor.execute("UPDATE employees SET status=%s WHERE employee_id=%s", (status, employee_id))
+        active_flag = 1 if is_active else 0
+
+        # Find employee full name and email
+        cursor.execute(
+            "SELECT full_name, email, employee_code FROM employees WHERE employee_code = %s OR employee_id = %s LIMIT 1",
+            (employee_id, employee_id)
+        )
+        emp_row = cursor.fetchone()
+        emp_name = emp_row["full_name"] if emp_row and emp_row.get("full_name") else employee_id
+        emp_email = emp_row.get("email") if emp_row else None
+        emp_code = emp_row.get("employee_code") if emp_row else employee_id
+
+        # 1. Update employees table
+        cursor.execute("UPDATE employees SET status=%s WHERE employee_code=%s OR employee_id=%s", (status, emp_code, employee_id))
+
+        # 2. Update users table (so deactivated employee cannot log in)
+        if emp_email:
+            cursor.execute("UPDATE users SET is_active=%s WHERE user_id=%s OR email=%s", (active_flag, emp_code, emp_email))
+        else:
+            cursor.execute("UPDATE users SET is_active=%s WHERE user_id=%s", (active_flag, emp_code))
+
         conn.commit()
+        cursor.close()
         conn.close()
-        return {"success": True, "message": f"Employee {status}"}
+
+        # Log into HR activity log
+        try:
+            from backend.core.hr_activity_logger import log_hr_activity
+            action_name = "ACCOUNT_ACTIVATED" if is_active else "ACCOUNT_DEACTIVATED"
+            action_desc = f"{'Reactivated' if is_active else 'Deactivated'} portal account for {emp_name} ({emp_code}). Login access is {'enabled' if is_active else 'disabled'}."
+            log_hr_activity(
+                performed_by=actor,
+                performed_name=actor,
+                action=action_name,
+                target_employee_id=emp_code,
+                target_employee_name=emp_name,
+                details=action_desc,
+                ip_address=client_ip
+            )
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "message": f"Employee account {status} successfully",
+            "is_active": is_active,
+            "status": status,
+            "employee_id": emp_code,
+        }
     except Exception as e:
         return {"success": False, "message": str(e)}
 

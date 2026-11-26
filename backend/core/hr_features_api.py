@@ -30,12 +30,14 @@ class LateDeductionActionRequest(BaseModel):
 
 
 @router.get("/api/hr/late-deductions")
+@router.get("/api/hr/salary-deductions")
 def get_late_deductions(
     status: Optional[str] = Query(None, description="PENDING_REVIEW, APPLIED, IGNORED, or all"),
+    deduction_type: Optional[str] = Query(None, description="LATE_ARRIVAL, UNPAID_LEAVE, or all"),
     year: Optional[int] = Query(None),
     month: Optional[int] = Query(None),
 ):
-    """Retrieve late-arrival deduction reviews for HR decision."""
+    """Retrieve salary deduction reviews (late-arrival and unpaid leave) for HR decision."""
     try:
         conn = _get_db()
         cur = conn.cursor(dictionary=True)
@@ -44,8 +46,12 @@ def get_late_deductions(
         target_year = year or now.year
         target_month = month or now.month
 
-        conditions = ["ad.deduction_type = 'LATE_ARRIVAL'"]
+        conditions = ["1=1"]
         params: List[Any] = []
+
+        if deduction_type and deduction_type.strip().upper() != "ALL":
+            conditions.append("ad.deduction_type = %s")
+            params.append(deduction_type.strip().upper())
 
         if year:
             conditions.append("ad.year = %s")
@@ -124,10 +130,11 @@ def get_late_deductions(
 
 
 @router.post("/api/hr/late-deductions/{deduction_id}/action")
+@router.post("/api/hr/salary-deductions/{deduction_id}/action")
 def act_on_late_deduction(deduction_id: int, payload: LateDeductionActionRequest, request: Request):
     """
-    HR action on late deduction:
-    - APPLY: sets status to 'APPLIED' so half-day salary is deducted in payroll.
+    HR action on salary deduction (late arrival or unpaid leave):
+    - APPLY: sets status to 'APPLIED' so deduction is subtracted in payroll.
     - IGNORE: sets status to 'IGNORED' and amount to 0 (no deduction).
     """
     action = (payload.action or "").strip().upper()
@@ -163,6 +170,7 @@ def act_on_late_deduction(deduction_id: int, payload: LateDeductionActionRequest
         month = row["month"]
         late_count = row["late_count"]
         amount = float(row["amount"] or 0.0)
+        ded_type = row.get("deduction_type") or "LATE_ARRIVAL"
 
         actor_id = payload.actor_id or "hr"
         actor_name = payload.actor_name or "HR Manager"
@@ -170,35 +178,46 @@ def act_on_late_deduction(deduction_id: int, payload: LateDeductionActionRequest
 
         if action == "APPLY":
             new_status = "APPLIED"
+            half_days = 1 if ded_type == "LATE_ARRIVAL" else int(row.get("half_days_deducted") or 0)
             cur.execute(
                 """
                 UPDATE attendance_deductions
                 SET status = 'APPLIED',
-                    half_days_deducted = 1,
+                    half_days_deducted = %s,
                     reviewed_by = %s,
                     reviewed_at = NOW(),
                     review_notes = %s
                 WHERE id = %s
                 """,
-                (actor_name, notes, deduction_id),
+                (half_days, actor_name, notes, deduction_id),
             )
-            # Update monthly late summary
-            cur.execute(
-                """
-                UPDATE monthly_late_summary
-                SET deduction_triggered = 1
-                WHERE employee_id = %s AND year = %s AND month = %s
-                """,
-                (emp_id, year, month),
-            )
+            if ded_type == "LATE_ARRIVAL":
+                cur.execute(
+                    """
+                    UPDATE monthly_late_summary
+                    SET deduction_triggered = 1
+                    WHERE employee_id = %s AND year = %s AND month = %s
+                    """,
+                    (emp_id, year, month),
+                )
+                act_type = "LATE_DEDUCTION_APPLIED"
+                act_desc = f"Applied half-day salary deduction of ₹{amount:.2f} for {late_count} late arrivals in {month:02d}/{year}. Notes: {notes or 'Standard deduction policy'}"
+                notif_title = "Late-Arrival Salary Deduction Applied"
+                notif_msg = f"A half-day salary deduction of ₹{amount:.2f} has been applied by HR for {late_count} late arrivals in {month:02d}/{year}."
+            else:
+                act_type = "LEAVE_DEDUCTION_APPLIED"
+                act_desc = f"Approved unpaid leave salary deduction of ₹{amount:.2f} in {month:02d}/{year}. Notes: {notes or 'Approved by HR'}"
+                notif_title = "Leave Salary Deduction Approved"
+                notif_msg = f"A salary deduction of ₹{amount:.2f} for unpaid leave in {month:02d}/{year} has been approved by HR."
+
             # Log in HR activity logs
             log_hr_activity(
                 performed_by=actor_id,
                 performed_name=actor_name,
-                action="LATE_DEDUCTION_APPLIED",
+                action=act_type,
                 target_employee_id=emp_id,
                 target_employee_name=emp_name,
-                details=f"Applied half-day salary deduction of ₹{amount:.2f} for {late_count} late arrivals in {month:02d}/{year}. Notes: {notes or 'Standard deduction policy'}",
+                details=act_desc,
                 ip_address=client_ip,
             )
             # Notify employee
@@ -207,13 +226,9 @@ def act_on_late_deduction(deduction_id: int, payload: LateDeductionActionRequest
                 INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
                 VALUES (%s, %s, %s, 'PAYROLL', 0, NOW())
                 """,
-                (
-                    emp_id,
-                    "Late-Arrival Salary Deduction Applied",
-                    f"A half-day salary deduction of ₹{amount:.2f} has been applied by HR for {late_count} late arrivals in {month:02d}/{year}.",
-                ),
+                (emp_id, notif_title, notif_msg),
             )
-            msg = f"Half-day deduction of ₹{amount:.2f} applied for {emp_name}."
+            msg = f"Salary deduction of ₹{amount:.2f} applied for {emp_name}."
 
         else:  # IGNORE
             new_status = "IGNORED"
@@ -230,23 +245,33 @@ def act_on_late_deduction(deduction_id: int, payload: LateDeductionActionRequest
                 """,
                 (actor_name, notes, deduction_id),
             )
-            # Update monthly late summary
-            cur.execute(
-                """
-                UPDATE monthly_late_summary
-                SET deduction_triggered = 0
-                WHERE employee_id = %s AND year = %s AND month = %s
-                """,
-                (emp_id, year, month),
-            )
+            if ded_type == "LATE_ARRIVAL":
+                cur.execute(
+                    """
+                    UPDATE monthly_late_summary
+                    SET deduction_triggered = 0
+                    WHERE employee_id = %s AND year = %s AND month = %s
+                    """,
+                    (emp_id, year, month),
+                )
+                act_type = "LATE_DEDUCTION_IGNORED"
+                act_desc = f"Ignored/waived late-arrival deduction for {late_count} late arrivals in {month:02d}/{year}. Notes: {notes or 'Waived by HR'}"
+                notif_title = "Late-Arrival Deduction Waived"
+                notif_msg = f"HR has reviewed your late arrivals for {month:02d}/{year} and waived the salary deduction."
+            else:
+                act_type = "LEAVE_DEDUCTION_IGNORED"
+                act_desc = f"Waived/ignored unpaid leave salary deduction of ₹{amount:.2f} in {month:02d}/{year}. Notes: {notes or 'Waived by HR'}"
+                notif_title = "Leave Salary Deduction Waived"
+                notif_msg = f"HR has reviewed and waived the salary deduction for your unpaid leave in {month:02d}/{year}."
+
             # Log in HR activity logs
             log_hr_activity(
                 performed_by=actor_id,
                 performed_name=actor_name,
-                action="LATE_DEDUCTION_IGNORED",
+                action=act_type,
                 target_employee_id=emp_id,
                 target_employee_name=emp_name,
-                details=f"Ignored/waived late-arrival deduction for {late_count} late arrivals in {month:02d}/{year}. Notes: {notes or 'Waived by HR'}",
+                details=act_desc,
                 ip_address=client_ip,
             )
             # Notify employee
@@ -255,13 +280,9 @@ def act_on_late_deduction(deduction_id: int, payload: LateDeductionActionRequest
                 INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
                 VALUES (%s, %s, %s, 'ATTENDANCE', 0, NOW())
                 """,
-                (
-                    emp_id,
-                    "Late-Arrival Deduction Waived",
-                    f"HR has reviewed your late arrivals for {month:02d}/{year} and waived the salary deduction.",
-                ),
+                (emp_id, notif_title, notif_msg),
             )
-            msg = f"Late-arrival deduction waived/ignored for {emp_name}."
+            msg = f"Salary deduction waived/ignored for {emp_name}."
 
         conn.commit()
         cur.close()

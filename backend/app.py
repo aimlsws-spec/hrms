@@ -1001,6 +1001,16 @@ async def login(request: LoginRequest):
                 failure_reason="User not found"
             )
             return {"success": False, "message": "Invalid username or password"}
+
+        if user.get('is_active') is False or user.get('is_active') == 0:
+            audit_logger.log_login_attempt(
+                user_id=user.get('user_id', request.username),
+                username=request.username,
+                status="FAILED",
+                ip_address="127.0.0.1",
+                failure_reason="Account is deactivated"
+            )
+            return {"success": False, "message": "Your account has been deactivated. Please contact HR."}
         
         # Support both bcrypt-hashed (new signups) and legacy plain-text passwords
         import bcrypt as _bcrypt
@@ -1134,6 +1144,9 @@ async def verify_otp(request: dict):
         
         if not user:
             return {"success": False, "message": "User not found"}
+
+        if user.get('is_active') is False or user.get('is_active') == 0:
+            return {"success": False, "message": "Your account has been deactivated. Please contact HR."}
         
         # Log successful login
         audit_logger.log_login_attempt(
@@ -2971,35 +2984,54 @@ def _fetch_leave_requests(employee_id: str = None, pending_only: bool = False):
 
 def _get_leave_balance_payload(cursor, employee_id: str):
     current_year = datetime.now().year
-    cursor.execute("""
-        INSERT IGNORE INTO leave_balance
-            (employee_id, year, casual_leave, sick_leave, earned_leave, casual_total, sick_total, earned_total)
-        VALUES (%s, %s, 12.00, 12.00, 12.00, 12.00, 12.00, 12.00)
-    """, (employee_id, current_year))
-    cursor.execute("SELECT * FROM leave_balance WHERE employee_id = %s", (employee_id,))
-    row = cursor.fetchone() or {}
-    record_year = row.get("year") or current_year
 
-    casual_total = float(row.get("casual_total") or 12.0)
-    sick_total   = float(row.get("sick_total")   or 12.0)
-    earned_total = float(row.get("earned_total") or 12.0)
+    # Check if employee is currently in probation
+    cursor.execute(
+        "SELECT status FROM employees WHERE employee_code = %s OR employee_id = %s LIMIT 1",
+        (employee_id, employee_id)
+    )
+    st_row = cursor.fetchone() or {}
+    emp_status = (st_row.get("status") or "").strip().lower()
+    is_probation = (emp_status == "probation")
 
-    # Carry forward logic:
-    # "Unused balances carry forward until the year changes and do not carry beyond the year change."
-    if record_year < current_year:
-        # Reset balances for the new year: unused from previous year do not carry beyond year change
-        casual = casual_total
-        sick   = sick_total
-        earned = earned_total
-        cursor.execute("""
-            UPDATE leave_balance
-            SET year = %s, casual_leave = %s, sick_leave = %s, earned_leave = %s
-            WHERE employee_id = %s
-        """, (current_year, casual, sick, earned, employee_id))
+    if is_probation:
+        # During probation, employees have no company-provided leave balance (0 CL, 0 SL, 0 PL)
+        casual_total = 0.0
+        sick_total   = 0.0
+        earned_total = 0.0
+        casual       = 0.0
+        sick         = 0.0
+        earned       = 0.0
     else:
-        casual = float(row.get("casual_leave") if row.get("casual_leave") is not None else casual_total)
-        sick   = float(row.get("sick_leave")   if row.get("sick_leave") is not None else sick_total)
-        earned = float(row.get("earned_leave") if row.get("earned_leave") is not None else earned_total)
+        cursor.execute("""
+            INSERT IGNORE INTO leave_balance
+                (employee_id, year, casual_leave, sick_leave, earned_leave, casual_total, sick_total, earned_total)
+            VALUES (%s, %s, 12.00, 12.00, 12.00, 12.00, 12.00, 12.00)
+        """, (employee_id, current_year))
+        cursor.execute("SELECT * FROM leave_balance WHERE employee_id = %s", (employee_id,))
+        row = cursor.fetchone() or {}
+        record_year = row.get("year") or current_year
+
+        casual_total = float(row.get("casual_total") or 12.0)
+        sick_total   = float(row.get("sick_total")   or 12.0)
+        earned_total = float(row.get("earned_total") or 12.0)
+
+        # Carry forward logic:
+        # "Unused balances carry forward until the year changes and do not carry beyond the year change."
+        if record_year < current_year:
+            # Reset balances for the new year: unused from previous year do not carry beyond year change
+            casual = casual_total
+            sick   = sick_total
+            earned = earned_total
+            cursor.execute("""
+                UPDATE leave_balance
+                SET year = %s, casual_leave = %s, sick_leave = %s, earned_leave = %s
+                WHERE employee_id = %s
+            """, (current_year, casual, sick, earned, employee_id))
+        else:
+            casual = float(row.get("casual_leave") if row.get("casual_leave") is not None else casual_total)
+            sick   = float(row.get("sick_leave")   if row.get("sick_leave") is not None else sick_total)
+            earned = float(row.get("earned_leave") if row.get("earned_leave") is not None else earned_total)
 
     # Total unpaid days taken from approved leave requests in the current year
     cursor.execute("""
@@ -3022,6 +3054,8 @@ def _get_leave_balance_payload(cursor, employee_id: str):
     summary = {
         "employee_id":     employee_id,
         "year":            current_year,
+        "is_probation":    is_probation,
+        "employment_status": "probation" if is_probation else (emp_status or "active"),
         "casual_leave":    casual,
         "sick_leave":      sick,
         "earned_leave":    earned,
@@ -3186,39 +3220,104 @@ def _set_leave_status(request_id: int, status: str, actor: str = "HR", comments:
                     "is_unpaid":  int(existing.get('is_unpaid') or 0),
                 }
 
-            col = _leave_type_column(leave['leave_type'])
-            cursor.execute("INSERT IGNORE INTO leave_balance (employee_id) VALUES (%s)", (emp_id,))
-            cursor.execute(f"SELECT {col} FROM leave_balance WHERE employee_id = %s", (emp_id,))
-            bal_row           = cursor.fetchone()
-            available_balance = float(bal_row[col] or 0) if bal_row else 0.0
-            days_requested    = float(leave['days_count'] or 0)
+            # Check if employee is in probation
+            cursor.execute(
+                "SELECT status, full_name FROM employees WHERE employee_code = %s OR employee_id = %s LIMIT 1",
+                (emp_id, emp_id)
+            )
+            emp_info = cursor.fetchone() or {}
+            emp_status = (emp_info.get("status") or "").strip().lower()
+            emp_full_name = emp_info.get("full_name") or emp_id
+            is_probation = (emp_status == "probation")
 
-            paid_days   = round(min(days_requested, available_balance), 2)
-            unpaid_days = round(max(0.0, days_requested - available_balance), 2)
-            is_unpaid   = 1 if unpaid_days > 0 else 0
+            days_requested = float(leave['days_count'] or 0)
+
+            if is_probation:
+                # During probation, employees have 0 company-provided leave balance; leave is unpaid/salary-deducted
+                available_balance = 0.0
+                paid_days = 0.0
+                unpaid_days = days_requested
+                is_unpaid = 1 if unpaid_days > 0 else 0
+            else:
+                col = _leave_type_column(leave['leave_type'])
+                cursor.execute("INSERT IGNORE INTO leave_balance (employee_id) VALUES (%s)", (emp_id,))
+                cursor.execute(f"SELECT {col} FROM leave_balance WHERE employee_id = %s", (emp_id,))
+                bal_row           = cursor.fetchone()
+                available_balance = float(bal_row[col] or 0) if bal_row else 0.0
+
+                paid_days   = round(min(days_requested, available_balance), 2)
+                unpaid_days = round(max(0.0, days_requested - available_balance), 2)
+                is_unpaid   = 1 if unpaid_days > 0 else 0
+
+                if paid_days > 0:
+                    debit_result = record_leave_debit(
+                        cursor,
+                        employee_id=emp_id,
+                        leave_type=leave['leave_type'],
+                        days=paid_days,
+                        reference_type="LEAVE_REQUEST",
+                        reference_id=str(request_id),
+                        remarks=f"Approved leave request #{request_id}",
+                    )
+                    logger.info(
+                        "_set_leave_status: leave_id=%d ledger_debit=%s paid_days=%.2f from %s balance for emp=%s",
+                        request_id, debit_result, paid_days, col, emp_id,
+                    )
 
             logger.info(
                 "_set_leave_status: leave_id=%d emp=%s leave_type=%s "
                 "approved_days=%.2f available_balance=%.2f "
-                "paid_leave_days=%.2f unpaid_leave_days=%.2f",
+                "paid_leave_days=%.2f unpaid_leave_days=%.2f is_probation=%s",
                 request_id, emp_id, leave['leave_type'],
-                days_requested, available_balance, paid_days, unpaid_days,
+                days_requested, available_balance, paid_days, unpaid_days, is_probation,
             )
 
-            if paid_days > 0:
-                debit_result = record_leave_debit(
-                    cursor,
-                    employee_id=emp_id,
-                    leave_type=leave['leave_type'],
-                    days=paid_days,
-                    reference_type="LEAVE_REQUEST",
-                    reference_id=str(request_id),
-                    remarks=f"Approved leave request #{request_id}",
-                )
-                logger.info(
-                    "_set_leave_status: leave_id=%d ledger_debit=%s paid_days=%.2f from %s balance for emp=%s",
-                    request_id, debit_result, paid_days, col, emp_id,
-                )
+            # When unpaid_days > 0, insert attendance_deductions record with PENDING_REVIEW
+            # and notify HR for salary deduction approval (no automatic deduction)
+            if unpaid_days > 0:
+                try:
+                    cursor.execute("""
+                        SELECT gross_salary FROM employee_salaries
+                        WHERE employee_id = %s AND status = 'active'
+                        ORDER BY id DESC LIMIT 1
+                    """, (emp_id,))
+                    sal_row = cursor.fetchone()
+                    monthly_sal = float(sal_row['gross_salary']) if sal_row and sal_row.get('gross_salary') else 0.0
+
+                    l_date = leave.get('start_date')
+                    l_year = l_date.year if hasattr(l_date, 'year') else datetime.now().year
+                    l_month = l_date.month if hasattr(l_date, 'month') else datetime.now().month
+
+                    import calendar as _cal
+                    days_in_m = _cal.monthrange(l_year, l_month)[1]
+                    daily_sal = monthly_sal / days_in_m if days_in_m else 0.0
+                    deduction_amount = round(daily_sal * unpaid_days, 2)
+                    half_days_count = int(round(unpaid_days * 2))
+
+                    cursor.execute("""
+                        INSERT INTO attendance_deductions
+                            (employee_id, year, month, deduction_type, late_count, half_days_deducted,
+                             amount, status, created_at, updated_at)
+                        VALUES (%s, %s, %s, 'UNPAID_LEAVE', 0, %s, %s, 'PENDING_REVIEW', NOW(), NOW())
+                    """, (emp_id, l_year, l_month, half_days_count, deduction_amount))
+
+                    # Send notification to HR
+                    cursor.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin') AND COALESCE(is_active, 1) = 1")
+                    hr_users = [r['user_id'] for r in cursor.fetchall()]
+                    prob_tag = " (Probation)" if is_probation else ""
+                    notif_title = f"Salary Deduction Review: {emp_full_name}"
+                    notif_msg = (
+                        f"Employee {emp_full_name} ({emp_id}){prob_tag} has {unpaid_days} unpaid leave day(s) "
+                        f"in {l_month:02d}/{l_year}. Estimated deduction amount: ₹{deduction_amount:.2f}. "
+                        f"Awaiting HR approval in the Salary Deductions Review section."
+                    )
+                    for hr_uid in hr_users:
+                        cursor.execute("""
+                            INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                            VALUES (%s, %s, %s, 'SALARY_DEDUCTION_REVIEW', 0, NOW())
+                        """, (hr_uid, notif_title, notif_msg))
+                except Exception as ded_err:
+                    logger.warning("_set_leave_status: failed to queue salary deduction review: %s", ded_err)
 
         # Update leave request — is_unpaid, unpaid_days, paid_leave_days guaranteed by _ensure_leave_tables
         cursor.execute("""
@@ -5500,12 +5599,17 @@ def get_audit_summary():
 
 # Employee Management
 @app.put("/api/admin/employees/{employee_id}")
-def admin_edit_employee(employee_id: str, data: dict):
-    return admin_features.edit_employee(employee_id, data)
+@app.post("/api/admin/employees/{employee_id}/edit")
+def admin_edit_employee(employee_id: str, data: dict, request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    actor = data.get('actor') or data.get('performed_by') or "HR Admin"
+    return admin_features.edit_employee(employee_id, data, actor=actor, client_ip=client_ip)
 
 @app.post("/api/admin/employees/{employee_id}/toggle-status")
-def admin_toggle_employee(employee_id: str, data: dict):
-    return admin_features.toggle_employee_status(employee_id, data.get('is_active', True))
+def admin_toggle_employee(employee_id: str, data: dict, request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    actor = data.get('actor') or data.get('performed_by') or "HR Admin"
+    return admin_features.toggle_employee_status(employee_id, data.get('is_active', True), actor=actor, client_ip=client_ip)
 
 # Document Generation
 @app.post("/api/admin/documents/experience-letter/{employee_id}")
@@ -6070,26 +6174,72 @@ async def add_employee(request: Request):
 
         employee_code = generate_employee_code(cursor)
 
+        status_in = str(data.get("status", "probation")).strip().lower()
+        if status_in in ("active", "employment", "confirmed"):
+            emp_status = "active"
+        else:
+            emp_status = "probation"
+
         # Insert into employees using real (non-virtual) columns
         cursor.execute("""
             INSERT INTO employees
                 (employee_code, full_name, email, phone, department, title, joining_date, status)
-            VALUES (%s, %s, %s, %s, %s, %s, CURDATE(), 'active')
-        """, (employee_code, full_name, email, phone, department, title))
+            VALUES (%s, %s, %s, %s, %s, %s, CURDATE(), %s)
+        """, (employee_code, full_name, email, phone, department, title, emp_status))
         conn.commit()
+
+        # Initialize leave balance (0 for probation, 12 for employment)
+        cur_year = datetime.now().year
+        init_cl = 0.00 if emp_status == "probation" else 12.00
+        init_sl = 0.00 if emp_status == "probation" else 12.00
+        init_pl = 0.00 if emp_status == "probation" else 12.00
+        cursor.execute("""
+            INSERT INTO leave_balance
+                (employee_id, year, casual_leave, sick_leave, earned_leave, casual_total, sick_total, earned_total)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                year = VALUES(year), casual_leave = VALUES(casual_leave), sick_leave = VALUES(sick_leave),
+                earned_leave = VALUES(earned_leave), casual_total = VALUES(casual_total),
+                sick_total = VALUES(sick_total), earned_total = VALUES(earned_total)
+        """, (employee_code, cur_year, init_cl, init_sl, init_pl, init_cl, init_sl, init_pl))
+
+        # Save salary if provided
+        annual_ctc = float(data.get("annual_ctc") or 0.0)
+        if annual_ctc > 0:
+            cursor.execute("""
+                INSERT INTO employee_salaries (employee_id, gross_salary, ctc, status, effective_from)
+                VALUES (%s, %s, %s, 'active', CURDATE())
+                ON DUPLICATE KEY UPDATE gross_salary = VALUES(gross_salary), ctc = VALUES(ctc)
+            """, (employee_code, round(annual_ctc / 12, 2), annual_ctc))
 
         # Also create a user account so the employee can log in
         username = email.split("@")[0]
         # Ensure username is unique
         cursor.execute("SELECT user_id FROM users WHERE username = %s", (username,))
         if cursor.fetchone():
-            username = f"{username}{next_num}"
+            import random
+            username = f"{username}{random.randint(10, 999)}"
         cursor.execute("""
             INSERT IGNORE INTO users
                 (user_id, username, email, password, role, full_name, is_active, profile_completed)
             VALUES (%s, %s, %s, %s, 'employee', %s, 1, 0)
         """, (employee_code, username, email, password, full_name))
         conn.commit()
+
+        try:
+            from backend.core.hr_activity_logger import log_hr_activity
+            actor_name = data.get("actor") or data.get("created_by") or "HR Admin"
+            log_hr_activity(
+                performed_by=actor_name,
+                performed_name=actor_name,
+                action="EMPLOYEE_CREATED",
+                target_employee_id=employee_code,
+                target_employee_name=full_name,
+                details=f"Created employee record for {full_name} ({employee_code}) with status {emp_status.title()} in department {department}."
+            )
+        except Exception:
+            pass
+
         cursor.close()
         conn.close()
 

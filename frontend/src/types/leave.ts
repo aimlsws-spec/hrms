@@ -74,6 +74,9 @@ export interface CalendarData {
   leaves: CalendarLeave[]
   holidays: CalendarHoliday[]
   saturdays: number[]
+  second_and_fourth_saturdays?: number[]
+  sundays?: number[]
+  all_saturdays?: number[]
 }
 
 export interface ApplyLeavePayload {

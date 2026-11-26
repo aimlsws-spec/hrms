@@ -40,6 +40,7 @@ export interface CreateEmployeePayload {
   title: string
   password: string
   annual_ctc: number
+  status?: string
 }
 
 export interface EditEmployeePayload {
@@ -49,6 +50,7 @@ export interface EditEmployeePayload {
   title?: string
   phone?: string
   annual_ctc?: number
+  status?: string
 }
 
 export const DEPARTMENTS = [

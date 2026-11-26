@@ -596,18 +596,47 @@ async def get_leave_calendar(employee_id: str, year: int, month: int):
     """Return leave requests + holidays for a specific month/employee, for calendar rendering."""
     import calendar as _cal
 
+    days_in_month = _cal.monthrange(year, month)[1]
+    all_sats = [
+        d for d in range(1, days_in_month + 1)
+        if datetime(year, month, d).weekday() == 5
+    ]
+    # Mark 2nd and 4th Saturdays as company holidays
+    second_and_fourth_saturdays = []
+    if len(all_sats) >= 2:
+        second_and_fourth_saturdays.append(all_sats[1])
+    if len(all_sats) >= 4:
+        second_and_fourth_saturdays.append(all_sats[3])
+
+    # Mark all Sundays as holidays / weekly off
+    sundays = [
+        d for d in range(1, days_in_month + 1)
+        if datetime(year, month, d).weekday() == 6
+    ]
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("""
-            SELECT id, leave_type, start_date, end_date, status, reason
-            FROM leave_requests
-            WHERE employee_id = %s
-              AND YEAR(start_date) = %s
-              AND MONTH(start_date) = %s
-            ORDER BY start_date
-        """, (employee_id, year, month))
+        if str(employee_id).lower() in ("all", "", "0", "undefined", "null", "admin", "hr"):
+            cursor.execute("""
+                SELECT lr.id, lr.employee_id, lr.leave_type, lr.start_date, lr.end_date, lr.status, lr.reason,
+                       e.full_name AS employee_name
+                FROM leave_requests lr
+                LEFT JOIN employees e ON lr.employee_id = e.employee_code
+                WHERE YEAR(lr.start_date) = %s AND MONTH(lr.start_date) = %s
+                ORDER BY lr.start_date
+            """, (year, month))
+        else:
+            cursor.execute("""
+                SELECT id, employee_id, leave_type, start_date, end_date, status, reason
+                FROM leave_requests
+                WHERE employee_id = %s
+                  AND YEAR(start_date) = %s
+                  AND MONTH(start_date) = %s
+                ORDER BY start_date
+            """, (employee_id, year, month))
+
         leaves = cursor.fetchall()
         for r in leaves:
             for key in ('start_date', 'end_date'):
@@ -629,23 +658,31 @@ async def get_leave_calendar(employee_id: str, year: int, month: int):
         cursor.close()
         conn.close()
 
-        days_in_month = _cal.monthrange(year, month)[1]
-        saturdays = [
-            d for d in range(1, days_in_month + 1)
-            if datetime(year, month, d).weekday() == 5
-        ]
-
         return {
             "success": True,
             "year": year,
             "month": month,
             "leaves": leaves,
             "holidays": holidays,
-            "saturdays": saturdays,
+            "saturdays": second_and_fourth_saturdays,
+            "second_and_fourth_saturdays": second_and_fourth_saturdays,
+            "sundays": sundays,
+            "all_saturdays": all_sats,
         }
     except Exception as e:
-        # Never crash the calendar widget — return empty-but-valid shape.
-        return {"success": True, "year": year, "month": month, "leaves": [], "holidays": [], "saturdays": [], "message": str(e)}
+        # Never crash the calendar widget — return calculated holidays/saturdays/sundays
+        return {
+            "success": True,
+            "year": year,
+            "month": month,
+            "leaves": [],
+            "holidays": [],
+            "saturdays": second_and_fourth_saturdays,
+            "second_and_fourth_saturdays": second_and_fourth_saturdays,
+            "sundays": sundays,
+            "all_saturdays": all_sats,
+            "message": str(e),
+        }
 
 @router.get("/api/leave/all-balances")
 async def get_all_leave_balances():
@@ -653,10 +690,19 @@ async def get_all_leave_balances():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT lb.*, e.full_name as employee_name FROM leave_balance lb JOIN employees e ON lb.employee_id = e.employee_code")
+        cursor.execute("""
+            SELECT lb.*, e.full_name AS employee_name, e.full_name AS name,
+                   COALESCE(e.department, '') AS department,
+                   COALESCE(e.title, '') AS title,
+                   COALESCE(e.status, 'active') AS status
+            FROM leave_balance lb
+            JOIN employees e ON (lb.employee_id = e.employee_code OR lb.employee_id = e.employee_id)
+            ORDER BY e.full_name
+        """)
         balances = cursor.fetchall()
         for r in balances:
-            if hasattr(r.get('updated_at'), 'isoformat'): r['updated_at'] = r['updated_at'].isoformat()
+            if hasattr(r.get('updated_at'), 'isoformat'):
+                r['updated_at'] = r['updated_at'].isoformat()
         cursor.close()
         conn.close()
         return {"success": True, "employees": balances}

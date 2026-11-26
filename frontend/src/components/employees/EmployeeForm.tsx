@@ -9,11 +9,20 @@ import { hrSalaryApi } from '../../api/hrSalaryApi'
 const CREATE_DEFAULTS = {
   first_name: '', middle_name: '', last_name: '',
   email: '', phone: '', department: '', title: '', password: '', annual_ctc: '',
+  status: 'probation',
 }
 
 // ── Edit form default state ───────────────────────────────────────────────
 function editDefaults(emp: Employee) {
-  return { full_name: emp.name, email: emp.email ?? '', department: emp.department ?? '', title: emp.title ?? '', phone: '', annual_ctc: '' }
+  return {
+    full_name: emp.name,
+    email: emp.email ?? '',
+    department: emp.department ?? '',
+    title: emp.title ?? '',
+    phone: '',
+    annual_ctc: '',
+    status: emp.status || 'active',
+  }
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────
@@ -99,6 +108,7 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
         title:       form.title,
         password:    form.password,
         annual_ctc:  parseFloat(form.annual_ctc) || 0,
+        status:      form.status || 'probation',
       }
       ;(onSubmit as CreateProps['onSubmit'])(payload)
     } else {
@@ -109,6 +119,7 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
         title:      form.title      || undefined,
         phone:      form.phone      || undefined,
         annual_ctc: form.annual_ctc ? parseFloat(form.annual_ctc) : undefined,
+        status:     form.status     || 'active',
       }
       ;(onSubmit as EditProps['onSubmit'])(payload)
     }
@@ -242,6 +253,29 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
           </div>
         </div>
       )}
+
+      {/* ── Employment Status ── */}
+      <div className="pt-2">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 h-px bg-gray-100" />
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-1">Employment Status</span>
+          <div className="flex-1 h-px bg-gray-100" />
+        </div>
+        <label className={labelCls}>Status</label>
+        <select
+          className={inputCls}
+          value={form.status || 'probation'}
+          onChange={set('status')}
+        >
+          <option value="probation">Probation (0 leave balances, leaves require HR review)</option>
+          <option value="active">Employment / Confirmed (Full 12 CL, 12 SL, 12 PL balances)</option>
+        </select>
+        <p className="text-[11px] text-gray-500 mt-1.5">
+          {form.status === 'active'
+            ? '✓ Eligible for company-provided leave balances (12 Casual, 12 Sick, 12 Paid leaves).'
+            : '⚠️ During probation, employees have no company-provided leave balance. Leaves taken are salary-deducted pending HR approval.'}
+        </p>
+      </div>
 
       {/* ── Actions ── */}
       <div className="flex gap-3 pt-2">

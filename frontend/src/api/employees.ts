@@ -46,4 +46,8 @@ export const employeesApi = {
   // POST /api/admin/employees/{id}/toggle-status
   toggleStatus: (id: string, isActive: boolean) =>
     client.post<UpdateResponse>(`/admin/employees/${id}/toggle-status`, { is_active: isActive }),
+
+  // POST /api/employees/{id}/resend-invitation
+  resendInvitation: (id: string) =>
+    client.post<UpdateResponse>(`/employees/${id}/resend-invitation`),
 }

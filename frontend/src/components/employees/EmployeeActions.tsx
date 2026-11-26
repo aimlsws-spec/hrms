@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { Employee } from '../../types/employee'
+import { employeesApi } from '../../api/employees'
 
 interface Props {
   employee: Employee
@@ -15,8 +17,36 @@ export default function EmployeeActions({
   onToggleStatus,
   canEdit,
 }: Props) {
+  const [sendingInvite, setSendingInvite] = useState(false)
   const isInactive =
     employee.status === 'inactive' || employee.status === 'deactivated'
+
+  async function handleResendInvite() {
+    if (!employee.email) {
+      alert('This employee does not have an email address.')
+      return
+    }
+    if (
+      !window.confirm(
+        `Resend invitation email with login credentials to ${employee.name} (${employee.email})?`
+      )
+    ) {
+      return
+    }
+    setSendingInvite(true)
+    try {
+      const res = await employeesApi.resendInvitation(employee.employee_id)
+      if (res.data?.success) {
+        alert(res.data.message || `Invitation email sent to ${employee.email}`)
+      } else {
+        alert(res.data?.message || 'Failed to send invitation email.')
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error sending invitation email.')
+    } finally {
+      setSendingInvite(false)
+    }
+  }
 
   function handleStatusToggle() {
     if (!onToggleStatus) return
@@ -58,6 +88,22 @@ export default function EmployeeActions({
           title="Edit employee"
         >
           <i className="fas fa-pencil-alt text-xs" />
+        </button>
+      )}
+
+      {canEdit && !isInactive && (
+        <button
+          type="button"
+          onClick={handleResendInvite}
+          disabled={sendingInvite}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition-colors"
+          title="Resend invitation email"
+        >
+          {sendingInvite ? (
+            <i className="fa-solid fa-circle-notch animate-spin text-xs" />
+          ) : (
+            <i className="fa-solid fa-paper-plane text-xs" />
+          )}
         </button>
       )}
 

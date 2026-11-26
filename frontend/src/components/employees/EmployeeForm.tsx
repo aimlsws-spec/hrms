@@ -210,24 +210,36 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
 
       {/* ── Create-only: password + CTC ── */}
       {mode === 'create' && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>Password * <span className="text-gray-400 font-normal">(min 8)</span></label>
-            <Input
-              wrapperClass=""
-              type="password"
-              value={form.password}
-              onChange={set('password')}
-              required
-              minLength={8}
-              placeholder="Min 8 characters"
-            />
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Password * <span className="text-gray-400 font-normal">(min 8)</span></label>
+              <Input
+                wrapperClass=""
+                type="password"
+                value={form.password}
+                onChange={set('password')}
+                required
+                minLength={8}
+                placeholder="Min 8 characters"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Annual CTC *</label>
+              <input type="number" className={inputCls} value={form.annual_ctc} onChange={set('annual_ctc')} required min={0} step={1000} placeholder="e.g. 600000" />
+            </div>
           </div>
-          <div>
-            <label className={labelCls}>Annual CTC *</label>
-            <input type="number" className={inputCls} value={form.annual_ctc} onChange={set('annual_ctc')} required min={0} step={1000} placeholder="e.g. 600000" />
+
+          <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-100 flex items-start gap-2.5 text-xs text-blue-900">
+            <i className="fa-solid fa-envelope-circle-check text-blue-600 text-sm mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold">Automatic Email Invitation</p>
+              <p className="text-blue-700/90 mt-0.5">
+                An invitation email will be sent automatically to <strong>{form.email || 'the employee email'}</strong> from <strong>info@seawindsolution.in</strong> containing their Employee ID, email, and assigned password for direct login.
+              </p>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* ── Edit mode: Account & Credentials (HR-Managed) ── */}

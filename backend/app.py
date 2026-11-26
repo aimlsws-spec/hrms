@@ -6341,6 +6341,21 @@ async def add_employee(request: Request):
         """, (employee_code, username, email, password, password, full_name))
         conn.commit()
 
+        # Send invitation email with login credentials
+        try:
+            from backend.core.mailer import send_invitation_in_background
+            send_invitation_in_background(
+                full_name=full_name,
+                email=email,
+                employee_code=employee_code,
+                username=username,
+                password=password,
+                department=department,
+                title=title,
+            )
+        except Exception as mail_err:
+            logger.error("Failed to trigger invitation email: %s", mail_err)
+
         try:
             from backend.core.hr_activity_logger import log_hr_activity
             actor_name = data.get("actor") or data.get("created_by") or "HR Admin"
@@ -6350,7 +6365,7 @@ async def add_employee(request: Request):
                 action="EMPLOYEE_CREATED",
                 target_employee_id=employee_code,
                 target_employee_name=full_name,
-                details=f"Created employee record for {full_name} ({employee_code}) with status {emp_status.title()} in department {department}."
+                details=f"Created employee record for {full_name} ({employee_code}). Invitation email sent to {email}."
             )
         except Exception:
             pass
@@ -6361,8 +6376,66 @@ async def add_employee(request: Request):
         return {
             "success": True,
             "employee_id": employee_code,
-            "message": f"Employee {full_name} created successfully with ID {employee_code}"
+            "message": f"Employee {full_name} created successfully! An invitation email with credentials was sent to {email}."
         }
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
+# --- /api/employees/{employee_id}/resend-invitation ---
+@app.post("/api/employees/{employee_id}/resend-invitation")
+async def resend_employee_invitation(employee_id: str, request: Request):
+    """Resend HRMS invitation email with employee login credentials."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.user_id, u.username, u.email, COALESCE(u.assigned_password, u.password) AS password,
+                   u.full_name, e.department, e.title
+            FROM users u
+            LEFT JOIN employees e ON (e.employee_code = u.user_id OR e.email = u.email)
+            WHERE u.user_id = %s OR e.employee_code = %s OR u.email = %s
+            LIMIT 1
+        """, (employee_id, employee_id, employee_id))
+        user_row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not user_row or not user_row.get("email"):
+            return {"success": False, "message": f"No employee account found for ID: {employee_id}"}
+
+        from backend.core.mailer import send_employee_invitation
+        result = send_employee_invitation(
+            full_name=user_row.get("full_name") or "Employee",
+            email=user_row["email"],
+            employee_code=user_row.get("user_id") or employee_id,
+            username=user_row.get("username") or user_row["email"],
+            password=user_row.get("password") or "employee123",
+            department=user_row.get("department") or "",
+            title=user_row.get("title") or "",
+        )
+
+        if result.get("success"):
+            try:
+                from backend.core.hr_activity_logger import log_hr_activity
+                try:
+                    body = await request.json()
+                except Exception:
+                    body = {}
+                actor_name = body.get("actor") if body else "HR Admin"
+                log_hr_activity(
+                    performed_by=actor_name,
+                    performed_name=actor_name,
+                    action="INVITATION_RESENT",
+                    target_employee_id=user_row.get("user_id") or employee_id,
+                    target_employee_name=user_row.get("full_name"),
+                    details=f"Resent HRMS invitation credentials email to {user_row['email']}."
+                )
+            except Exception:
+                pass
+            return {"success": True, "message": f"Invitation email sent successfully to {user_row['email']}."}
+        else:
+            return {"success": False, "message": f"Failed to deliver email: {result.get('error')}"}
     except Exception as e:
         return {"success": False, "message": str(e)}
 

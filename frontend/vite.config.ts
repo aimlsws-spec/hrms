@@ -18,6 +18,14 @@ export default defineConfig({
         timeout: 30000,
         proxyTimeout: 30000,
       },
+      '/uploads': {
+        target: 'http://127.0.0.1:8004',
+        changeOrigin: true,
+      },
+      '/images': {
+        target: 'http://127.0.0.1:8004',
+        changeOrigin: true,
+      },
     },
   },
 })

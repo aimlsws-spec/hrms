@@ -959,6 +959,7 @@ class SignupRequest(BaseModel):
 
 
 @app.post("/api/employee/first-login-setup")
+@app.post("/employee/first-login-setup")
 async def employee_first_login_setup(request: Request):
     """
     At first sign-in with HR-assigned credentials, employee enters:
@@ -6272,9 +6273,17 @@ async def add_employee(request: Request):
             import random
             username = f"{username}{random.randint(10, 999)}"
         cursor.execute("""
-            INSERT IGNORE INTO users
+            INSERT INTO users
                 (user_id, username, email, password, assigned_password, role, full_name, is_active, profile_completed)
             VALUES (%s, %s, %s, %s, %s, 'employee', %s, 1, 0)
+            ON DUPLICATE KEY UPDATE
+                email = VALUES(email),
+                password = VALUES(password),
+                assigned_password = VALUES(assigned_password),
+                full_name = VALUES(full_name),
+                role = 'employee',
+                is_active = 1,
+                profile_completed = 0
         """, (employee_code, username, email, password, password, full_name))
         conn.commit()
 

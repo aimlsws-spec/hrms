@@ -83,6 +83,7 @@ export default function FirstLoginDetailsModal({ isOpen, onCompleted }: Props) {
       setLoading(true)
       const res = await client.post('/employee/first-login-setup', {
         employee_id: user?.user_id,
+        email: user?.email,
         aadhaar_number: cleanAadhaar,
         pan_number: cleanPan,
         residential_address: form.residential_address.trim(),

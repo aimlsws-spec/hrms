@@ -67,6 +67,7 @@ export default function LoginPage() {
           full_name: data.user.full_name,
           role:      data.user.role,
           token:     data.token,
+          profile_completed: Boolean(data.user.profile_completed),
         })
         setSuccessMsg('Login successful!')
         setTimeout(() => navigate(roleHome, { replace: true }), 600)
@@ -100,6 +101,7 @@ export default function LoginPage() {
           full_name: data.user.full_name,
           role:      data.user.role,
           token:     data.token,
+          profile_completed: Boolean(data.user.profile_completed),
         })
         setSuccessMsg('Login successful!')
         setTimeout(() => navigate(roleHome, { replace: true }), 600)

@@ -55,12 +55,14 @@ export default function ApproveModal({ leaveRequest, onClose, onSuccess }: Props
     e.preventDefault()
     setError('')
     setIsLoading(true)
+    const roleTag = user?.role === 'sub_hr' ? 'Sub-HR' : user?.role === 'hr' ? 'HR Head' : 'HR'
+    const approverName = `${user?.full_name ?? 'HR'} (${roleTag})`
     try {
       const { data } = await leavesApi.approveLeave(
         leaveRequest.id,
-        user?.full_name ?? 'HR',
+        approverName,
         leaveRequest.leave_type ?? '',
-        comments || `Approved by ${user?.full_name ?? 'HR'}`,
+        comments || `Approved by ${approverName}`,
       )
       if (data.success) {
         // e.g. the employee already punched in on days this leave covers

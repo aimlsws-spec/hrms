@@ -84,7 +84,14 @@ export default function LeaveTable({ requests, isLoading, isHRAdmin, onApprove, 
               <td className="py-4 pr-4 text-gray-600 whitespace-nowrap text-left">{fmtDate(r.start_date)}</td>
               <td className="py-4 pr-4 text-gray-600 whitespace-nowrap text-left">{fmtDate(r.end_date)}</td>
               <td className="py-4 pr-4 text-gray-500 whitespace-nowrap text-left">{fmtDate(r.created_at)}</td>
-              <td className="py-4 pr-4 text-left"><LeaveStatusBadge status={r.status} /></td>
+              <td className="py-4 pr-4 text-left">
+                <LeaveStatusBadge status={r.status} />
+                {r.approved_by && r.status !== 'Pending' && (
+                  <p className="text-[11px] text-gray-500 mt-1 font-medium whitespace-nowrap">
+                    {r.status === 'Approved' ? '✓ By' : '✕ By'}: {r.approved_by}
+                  </p>
+                )}
+              </td>
               {isHRAdmin && (
                 <td className="py-4 text-left whitespace-nowrap">
                   <div className="flex items-center gap-1.5">

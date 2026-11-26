@@ -64,6 +64,7 @@ export default function HRActivityLogsPage() {
 
   const [search, setSearch] = useState('')
   const [selectedAction, setSelectedAction] = useState('')
+  const [selectedRole, setSelectedRole] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
@@ -75,6 +76,7 @@ export default function HRActivityLogsPage() {
         page: p,
         limit: 25,
         action: selectedAction || undefined,
+        role: selectedRole || undefined,
         search: search.trim() || undefined,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
@@ -92,7 +94,7 @@ export default function HRActivityLogsPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedAction, search, startDate, endDate])
+  }, [selectedAction, selectedRole, search, startDate, endDate])
 
   useEffect(() => {
     fetchLogs(1)
@@ -131,7 +133,7 @@ export default function HRActivityLogsPage() {
 
       {/* Filters Bar */}
       <div className="bg-white rounded-2xl border border-gray-200/80 p-3.5 shadow-sm space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Search Input */}
           <div className="relative md:col-span-2">
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
@@ -156,6 +158,20 @@ export default function HRActivityLogsPage() {
                   {opt.label}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Role Filter (HR Head / Sub-HR Audit) */}
+          <div>
+            <select
+              value={selectedRole}
+              onChange={e => setSelectedRole(e.target.value)}
+              className="w-full h-9 px-3 text-xs border border-gray-200 rounded-xl bg-gray-50/50 focus:outline-none focus:border-indigo-400 focus:bg-white transition text-gray-700 font-medium"
+            >
+              <option value="">All Actors / Roles</option>
+              <option value="sub_hr">Sub-HR Only</option>
+              <option value="hr">HR Head Only</option>
+              <option value="admin">Admin Only</option>
             </select>
           </div>
 
@@ -235,7 +251,18 @@ export default function HRActivityLogsPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <p className="font-semibold text-gray-800">{log.performed_name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-gray-800">{log.performed_name}</p>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            log.performed_role === 'sub_hr'
+                              ? 'bg-purple-100 text-purple-700'
+                              : log.performed_role === 'admin'
+                              ? 'bg-rose-100 text-rose-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {log.performed_role === 'sub_hr' ? 'Sub-HR' : log.performed_role === 'admin' ? 'Admin' : 'HR Head'}
+                          </span>
+                        </div>
                         <p className="text-[10px] text-gray-400 font-mono">{log.performed_by}</p>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">

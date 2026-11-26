@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { profileApi } from '../../../api/profile'
 import type { UpdateProfilePayload } from '../../../types/profile'
 
-export function useUpdateProfile(userId: number | null) {
+export function useUpdateProfile(userId: number | string | null) {
   const [isSaving,     setIsSaving]     = useState(false)
   const [saveError,    setSaveError]    = useState<string | null>(null)
   const [saveSuccess,  setSaveSuccess]  = useState(false)

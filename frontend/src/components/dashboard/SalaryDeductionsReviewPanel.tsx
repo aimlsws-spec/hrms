@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 
 export default function SalaryDeductionsReviewPanel() {
   const { user } = useAuthStore()
-  const isHRAdmin = user?.role === 'admin' || user?.role === 'hr'
+  const isHRAdmin = user?.role === 'admin' || user?.role === 'hr' || user?.role === 'sub_hr'
 
   const [deductions, setDeductions] = useState<LateDeductionItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,12 +44,14 @@ export default function SalaryDeductionsReviewPanel() {
 
     try {
       setActionLoadingId(id)
+      const roleTag = user?.role === 'sub_hr' ? 'Sub-HR' : user?.role === 'hr' ? 'HR Head' : 'Admin'
+      const actorName = `${user?.full_name || 'HR'} (${roleTag})`
       const res = await hrFeaturesApi.actOnLateDeduction(
         id,
         action,
         notes,
         user?.user_id ? String(user.user_id) : undefined,
-        user?.full_name || 'HR Admin'
+        actorName
       )
       if (res.data?.success) {
         fetchDeductions()

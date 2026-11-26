@@ -48,6 +48,9 @@ export interface LeaveRequest {
   requested_days?: number
   paid_days?: number
   unpaid_days?: number
+  approved_by?: string | null
+  approved_at?: string | null
+  approval_comments?: string | null
 }
 
 export interface UnpaidLeaveWarning {

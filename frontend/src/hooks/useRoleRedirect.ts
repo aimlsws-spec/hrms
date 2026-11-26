@@ -4,6 +4,7 @@ import type { UserRole } from '../types/user'
 const ROLE_HOME: Record<UserRole, string> = {
   admin:      '/hr/dashboard',
   hr:         '/hr/dashboard',
+  sub_hr:     '/hr/dashboard',
   manager:    '/hr/dashboard',
   employee:   '/employee/dashboard',
   accountant: '/accountant/dashboard',

@@ -47,7 +47,7 @@ export interface LeaveRequest {
 export interface CreateAnnouncementPayload {
   title: string
   message: string
-  created_by: number
+  created_by: number | string
   creator_name: string
   creator_role: string
 }

@@ -304,6 +304,7 @@ def get_activity_logs(
     search: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
+    role: Optional[str] = Query(None),
 ):
     """Fetch paginated HR activity logs."""
     return get_hr_activity_logs(
@@ -313,4 +314,5 @@ def get_activity_logs(
         search=search,
         start_date=start_date,
         end_date=end_date,
+        role=role,
     )

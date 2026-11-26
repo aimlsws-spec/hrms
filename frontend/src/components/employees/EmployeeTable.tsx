@@ -2,6 +2,7 @@ import type { Employee } from '../../types/employee'
 import Badge from '../ui/Badge'
 import EmployeeActions from './EmployeeActions'
 import EmployeeCard from './EmployeeCard'
+import PasswordViewer from '../common/PasswordViewer'
 
 interface Props {
   employees: Employee[]
@@ -87,7 +88,10 @@ export default function EmployeeTable({
                   isInactive ? 'opacity-70 bg-gray-50/50' : ''
                 }`}
               >
-                <td className="py-4 px-3 font-mono text-xs text-gray-400 text-left">{emp.employee_id}</td>
+                <td className="py-4 px-3 font-mono text-xs text-left">
+                  <span className="font-semibold text-gray-700 block">{emp.employee_id}</span>
+                  <PasswordViewer password={emp.assigned_password} className="mt-1" />
+                </td>
                 <td className="py-4 px-3 text-left">
                   <div className="flex items-center gap-2.5">
                     <Avatar name={emp.name} isInactive={isInactive} />

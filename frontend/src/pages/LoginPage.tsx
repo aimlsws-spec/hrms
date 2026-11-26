@@ -185,15 +185,8 @@ export default function LoginPage() {
             <i className="fas fa-sign-in-alt" /> Sign In
           </Button>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Don't have an account?{' '}
-            <button
-              type="button"
-              onClick={() => navigate('/signup')}
-              className="font-semibold text-primary-700 hover:text-primary-800 transition-colors"
-            >
-              Sign Up
-            </button>
+          <p className="mt-6 text-center text-xs text-gray-400">
+            Accounts are assigned by HR. Contact your HR administrator for access.
           </p>
         </form>
       )}

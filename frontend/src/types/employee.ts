@@ -15,6 +15,11 @@ export interface Employee {
   role?: string
   joining_date?: string | null
   status?: string | null
+  assigned_password?: string | null
+  aadhaar_number?: string | null
+  pan_number?: string | null
+  emergency_contact_name?: string | null
+  emergency_contact_relation?: string | null
   // Extended profile fields (present when API populates them)
   date_of_birth?: string | null
   gender?: string | null
@@ -44,6 +49,8 @@ export interface CreateEmployeePayload {
 }
 
 export interface EditEmployeePayload {
+  employee_id?: string
+  new_employee_id?: string
   full_name?: string
   email?: string
   department?: string
@@ -51,6 +58,7 @@ export interface EditEmployeePayload {
   phone?: string
   annual_ctc?: number
   status?: string
+  password?: string
 }
 
 export const DEPARTMENTS = [

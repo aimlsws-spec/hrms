@@ -534,23 +534,29 @@ async def search_employees_endpoint(q: str = "", limit: int = 20, user_id: str =
 
         total_count = cursor.fetchone()['total']
 
-        # Get employees ordered by employee_id numerically
+        # Get employees with status, credentials, and profile details
+        select_sql = """
+            SELECT e.employee_id, e.name, e.title, e.email, e.department, e.city, e.state,
+                   COALESCE(e.status, 'active') AS status,
+                   e.phone, e.joining_date,
+                   e.aadhaar_number, e.pan_number, e.emergency_contact_name, e.emergency_contact_relation,
+                   ep.date_of_birth, ep.emergency_number, ep.current_address,
+                   COALESCE((SELECT assigned_password FROM users u WHERE u.email = e.email OR u.user_id = e.employee_id LIMIT 1), '') AS assigned_password
+            FROM employees e
+            LEFT JOIN employee_profiles ep ON ep.employee_id = e.employee_id
+        """
         if q:
-            cursor.execute("""
-                SELECT employee_id, name, title, email, department, city, state
-                FROM employees
-                WHERE employee_id LIKE %s
-                   OR name LIKE %s
-                   OR email LIKE %s
-                   OR department LIKE %s
-                ORDER BY CAST(SUBSTRING(employee_id, 4) AS UNSIGNED)
+            cursor.execute(select_sql + """
+                WHERE e.employee_id LIKE %s
+                   OR e.name LIKE %s
+                   OR e.email LIKE %s
+                   OR e.department LIKE %s
+                ORDER BY e.id DESC
                 LIMIT %s
             """, (f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%", limit))
         else:
-            cursor.execute("""
-                SELECT employee_id, name, title, email, department, city, state
-                FROM employees
-                ORDER BY CAST(SUBSTRING(employee_id, 4) AS UNSIGNED)
+            cursor.execute(select_sql + """
+                ORDER BY e.id DESC
                 LIMIT %s
             """, (limit,))
 
@@ -945,6 +951,111 @@ class SignupRequest(BaseModel):
     enroll_id: str = ""
 
 
+@app.post("/api/employee/first-login-setup")
+async def employee_first_login_setup(request: Request):
+    """
+    At first sign-in with HR-assigned credentials, employee enters:
+    - Aadhaar number (12 digits)
+    - PAN (10 characters)
+    - Residential address
+    - Emergency contact name and relationship
+    - Emergency contact phone
+    - Date of birth (YYYY-MM-DD)
+    Employee cannot change the assigned password.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        return {"success": False, "message": "Invalid JSON body"}
+
+    emp_id = str(data.get("employee_id") or "").strip()
+    if not emp_id:
+        return {"success": False, "message": "Employee ID is required."}
+
+    aadhaar = str(data.get("aadhaar_number") or "").replace(" ", "").replace("-", "").strip()
+    pan = str(data.get("pan_number") or "").strip().upper()
+    address = str(data.get("residential_address") or data.get("current_address") or "").strip()
+    emerg_name = str(data.get("emergency_contact_name") or "").strip()
+    emerg_relation = str(data.get("emergency_contact_relation") or "").strip()
+    emerg_phone = str(data.get("emergency_number") or data.get("emergency_phone") or "").strip()
+    dob = str(data.get("date_of_birth") or "").strip()
+
+    if not aadhaar or len(aadhaar) != 12 or not aadhaar.isdigit():
+        return {"success": False, "message": "Aadhaar number must be exactly 12 digits."}
+
+    if not pan or len(pan) != 10 or not pan.isalnum():
+        return {"success": False, "message": "PAN number must be 10 alphanumeric characters."}
+
+    if not address:
+        return {"success": False, "message": "Residential address is required."}
+
+    if not emerg_name:
+        return {"success": False, "message": "Emergency contact name is required."}
+
+    if not emerg_relation:
+        return {"success": False, "message": "Emergency contact relationship is required."}
+
+    if not emerg_phone or len(emerg_phone) < 10:
+        return {"success": False, "message": "Valid emergency contact phone number is required."}
+
+    if not dob:
+        return {"success": False, "message": "Date of birth is required."}
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # 1. Update/Insert in employee_profiles
+        cursor.execute("""
+            INSERT INTO employee_profiles
+                (employee_id, aadhaar_number, pan_number, current_address, permanent_address,
+                 emergency_contact_name, emergency_contact_relation, emergency_number,
+                 date_of_birth, profile_completed, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 1, NOW())
+            ON DUPLICATE KEY UPDATE
+                aadhaar_number = VALUES(aadhaar_number),
+                pan_number = VALUES(pan_number),
+                current_address = VALUES(current_address),
+                permanent_address = VALUES(permanent_address),
+                emergency_contact_name = VALUES(emergency_contact_name),
+                emergency_contact_relation = VALUES(emergency_contact_relation),
+                emergency_number = VALUES(emergency_number),
+                date_of_birth = VALUES(date_of_birth),
+                profile_completed = 1,
+                updated_at = NOW()
+        """, (emp_id, aadhaar, pan, address, address, emerg_name, emerg_relation, emerg_phone, dob))
+
+        # 2. Update employees table
+        cursor.execute("""
+            UPDATE employees
+            SET aadhaar_number = %s,
+                pan_number = %s,
+                emergency_contact_name = %s,
+                emergency_contact_relation = %s
+            WHERE employee_code = %s OR employee_id = %s
+        """, (aadhaar, pan, emerg_name, emerg_relation, emp_id, emp_id))
+
+        # 3. Update users table (profile_completed = 1)
+        email = str(data.get("email") or "").strip()
+        cursor.execute("""
+            UPDATE users
+            SET profile_completed = 1
+            WHERE user_id = %s OR (email != '' AND email = %s)
+        """, (emp_id, email))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {
+            "success": True,
+            "message": "First-login employee details saved successfully.",
+            "profile_completed": True
+        }
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
 class LeaveApplicationRequest(BaseModel):
     leave_type: str
     start_date: str
@@ -1160,8 +1271,10 @@ async def verify_otp(request: dict):
         role_dashboards = {
             'admin': '/dashboard',
             'hr': '/dashboard',
+            'sub_hr': '/dashboard',
             'accountant': '/accountant',
             'support': '/support',
+            'employee': '/employee/dashboard',
         }
         dashboard = role_dashboards.get(user.get('role', ''), '/dashboard')
         return {
@@ -1174,7 +1287,7 @@ async def verify_otp(request: dict):
                 "email": user.get('email', ''),
                 "full_name": user.get('full_name', ''),
                 "role": user['role'],
-                "profile_completed": user.get('profile_completed', True)
+                "profile_completed": bool(user.get('profile_completed', 0))
             }
         }
     except Exception as e:
@@ -1209,25 +1322,11 @@ def generate_employee_code(cursor) -> str:
 
 @app.post("/api/auth/signup")
 async def employee_signup(request: SignupRequest):
-    """Public self-registration — creates employee-role accounts only."""
-    import bcrypt as _bcrypt
-
-    full_name  = request.full_name.strip()
-    username   = request.username.strip().lower()
-    email      = request.email.strip().lower()
-    password   = request.password
-    phone      = request.phone.strip()
-    department = request.department.strip()
-
-    # Basic field validation
-    if not full_name:
-        return {"success": False, "message": "Full name is required."}
-    if not username or len(username) < 3:
-        return {"success": False, "message": "Username must be at least 3 characters."}
-    if not email or "@" not in email:
-        return {"success": False, "message": "Valid email is required."}
-    if len(password) < 8:
-        return {"success": False, "message": "Password must be at least 8 characters."}
+    """Public self-registration is disabled per company policy. Employees can only be registered via HR invitation/creation."""
+    return {
+        "success": False,
+        "message": "Self-registration is disabled. Employee accounts can only be created by HR in the admin portal."
+    }
     if request.work_mode.strip().upper() not in ('WFO', 'WFH'):
         return {"success": False, "message": "Please choose a work mode (Work from Office or Work from Home)."}
     if not department:
@@ -1281,7 +1380,7 @@ async def employee_signup(request: SignupRequest):
 
         # Tell every active HR/admin user that this employee needs salary details.
         try:
-            cursor.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin') AND COALESCE(is_active, 1) = 1")
+            cursor.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin', 'sub_hr') AND COALESCE(is_active, 1) = 1")
             recipients = [r["user_id"] for r in cursor.fetchall()]
             if recipients:
                 cursor.executemany(
@@ -3086,7 +3185,7 @@ def _deduct_leave_balance(cursor, employee_id: str, leave_type: str, days_count:
 
 
 def _notify_hr_leave_submitted(cursor, employee_id: str, leave_type: str, days_count: int, request_id: int):
-    cursor.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin') AND COALESCE(is_active, 1) = 1")
+    cursor.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin', 'sub_hr') AND COALESCE(is_active, 1) = 1")
     recipients = [row[0] for row in cursor.fetchall()]
     if not recipients:
         return
@@ -3302,7 +3401,7 @@ def _set_leave_status(request_id: int, status: str, actor: str = "HR", comments:
                     """, (emp_id, l_year, l_month, half_days_count, deduction_amount))
 
                     # Send notification to HR
-                    cursor.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin') AND COALESCE(is_active, 1) = 1")
+                    cursor.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin', 'sub_hr') AND COALESCE(is_active, 1) = 1")
                     hr_users = [r['user_id'] for r in cursor.fetchall()]
                     prob_tag = " (Probation)" if is_probation else ""
                     notif_title = f"Salary Deduction Review: {emp_full_name}"
@@ -5622,8 +5721,17 @@ def admin_generate_relieving(employee_id: str, data: dict):
 
 # Credential Management
 @app.put("/api/admin/credentials/{employee_id}")
-def admin_update_credentials(employee_id: str, data: dict):
-    return admin_features.update_employee_credentials(employee_id, data.get('email'), data.get('password'))
+@app.post("/api/admin/employees/{employee_id}/credentials")
+def admin_update_credentials(employee_id: str, data: dict, request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    actor = data.get('actor') or data.get('performed_by') or "HR Admin"
+    return admin_features.update_employee_credentials(
+        employee_id,
+        new_employee_id=data.get('new_employee_id'),
+        password=data.get('password'),
+        actor=actor,
+        client_ip=client_ip
+    )
 
 @app.get("/api/admin/login-history")
 def admin_get_login_history(employee_id: str = None):
@@ -6221,9 +6329,9 @@ async def add_employee(request: Request):
             username = f"{username}{random.randint(10, 999)}"
         cursor.execute("""
             INSERT IGNORE INTO users
-                (user_id, username, email, password, role, full_name, is_active, profile_completed)
-            VALUES (%s, %s, %s, %s, 'employee', %s, 1, 0)
-        """, (employee_code, username, email, password, full_name))
+                (user_id, username, email, password, assigned_password, role, full_name, is_active, profile_completed)
+            VALUES (%s, %s, %s, %s, %s, 'employee', %s, 1, 0)
+        """, (employee_code, username, email, password, password, full_name))
         conn.commit()
 
         try:

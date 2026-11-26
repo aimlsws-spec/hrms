@@ -151,6 +151,91 @@ def edit_employee(employee_id: str, data: dict, actor: str = "HR Admin", client_
             except Exception:
                 pass
 
+        # Handle Employee ID change (cascading across all tables)
+        new_emp_id = data.get('new_employee_id') or (data.get('employee_id') if data.get('employee_id') != employee_id and data.get('employee_id') != emp_code else None)
+        if new_emp_id:
+            new_emp_id = str(new_emp_id).strip()
+            if new_emp_id and new_emp_id != emp_code:
+                # Check uniqueness
+                cursor.execute(
+                    "SELECT 1 FROM employees WHERE (employee_code = %s OR employee_id = %s) AND employee_code != %s LIMIT 1",
+                    (new_emp_id, new_emp_id, emp_code)
+                )
+                if cursor.fetchone():
+                    cursor.close(); conn.close()
+                    return {"success": False, "message": f"Employee ID '{new_emp_id}' is already assigned to another employee."}
+
+                cursor.execute("SELECT 1 FROM users WHERE user_id = %s AND user_id != %s LIMIT 1", (new_emp_id, emp_code))
+                if cursor.fetchone():
+                    cursor.close(); conn.close()
+                    return {"success": False, "message": f"User ID '{new_emp_id}' is already in use."}
+
+                old_code = emp_code
+                # Cascading updates across all tables
+                cascade_queries = [
+                    ("employees", "employee_code", "employee_code"),
+                    ("employees", "employee_id", "employee_id"),
+                    ("users", "user_id", "user_id"),
+                    ("attendance", "employee_id", "employee_id"),
+                    ("attendance_breaks", "employee_id", "employee_id"),
+                    ("attendance_deductions", "employee_id", "employee_id"),
+                    ("leave_requests", "employee_id", "employee_id"),
+                    ("leave_balance", "employee_id", "employee_id"),
+                    ("leave_ledger", "employee_id", "employee_id"),
+                    ("employee_salaries", "employee_id", "employee_id"),
+                    ("employee_profiles", "employee_id", "employee_id"),
+                    ("notifications", "user_id", "user_id"),
+                    ("monthly_late_summary", "employee_id", "employee_id"),
+                    ("biometric_employee_map", "employee_id", "employee_id"),
+                ]
+                for tbl, set_col, where_col in cascade_queries:
+                    try:
+                        cursor.execute(f"UPDATE {tbl} SET {set_col} = %s WHERE {where_col} = %s", (new_emp_id, old_code))
+                    except Exception:
+                        pass
+
+                emp_code = new_emp_id
+                employee_id = new_emp_id
+
+                try:
+                    from backend.core.hr_activity_logger import log_hr_activity
+                    log_hr_activity(
+                        performed_by=actor,
+                        performed_name=actor,
+                        action="EMPLOYEE_ID_CHANGED",
+                        target_employee_id=new_emp_id,
+                        target_employee_name=emp_name,
+                        details=f"Changed employee ID from {old_code} to {new_emp_id} for {emp_name}. All records updated to new ID.",
+                        ip_address=client_ip
+                    )
+                except Exception:
+                    pass
+
+        # Handle Password change by HR
+        if 'password' in data and data['password']:
+            new_password = str(data['password']).strip()
+            if new_password:
+                emp_email = emp_row.get("email")
+                cursor.execute("""
+                    UPDATE users
+                    SET password = %s, assigned_password = %s
+                    WHERE user_id = %s OR (email IS NOT NULL AND email = %s)
+                """, (new_password, new_password, emp_code, emp_email))
+
+                try:
+                    from backend.core.hr_activity_logger import log_hr_activity
+                    log_hr_activity(
+                        performed_by=actor,
+                        performed_name=actor,
+                        action="EMPLOYEE_PASSWORD_CHANGED",
+                        target_employee_id=emp_code,
+                        target_employee_name=emp_name,
+                        details=f"Updated assigned login password for {emp_name} ({emp_code}).",
+                        ip_address=client_ip
+                    )
+                except Exception:
+                    pass
+
         # Update annual CTC if provided
         if 'annual_ctc' in data and data['annual_ctc'] is not None:
             try:
@@ -290,25 +375,12 @@ def generate_relieving_letter(employee_id: str, last_working_day: str):
 
 # ==================== CREDENTIAL MANAGEMENT ====================
 
-def update_employee_credentials(employee_id: str, email: str = None, password: str = None):
-    """Update employee email/password"""
-    try:
-        from hrms_agent.auth import UserManager
-        user_manager = UserManager()
-        
-        if email:
-            result = user_manager.update_email(employee_id, email)
-            if not result['success']:
-                return result
-        
-        if password:
-            result = user_manager.reset_password(employee_id, password)
-            if not result['success']:
-                return result
-        
-        return {"success": True, "message": "Credentials updated"}
-    except Exception as e:
-        return {"success": False, "message": str(e)}
+def update_employee_credentials(employee_id: str, new_employee_id: str = None, password: str = None, actor: str = "HR Admin", client_ip: str = "127.0.0.1"):
+    """Update employee ID and/or password directly in the database with full cascade and audit logging."""
+    return edit_employee(employee_id, {
+        "new_employee_id": new_employee_id,
+        "password": password
+    }, actor=actor, client_ip=client_ip)
 
 def get_login_history(employee_id: str = None):
     """Get employee login history"""

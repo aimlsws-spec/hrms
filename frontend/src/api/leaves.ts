@@ -61,7 +61,7 @@ export const leavesApi = {
     client.get<LeaveRequestsResponse>('/leave_requests/all'),
 
   // Employee's own requests — backend returns `requests` field
-  getEmployeeRequests: (userId: number) =>
+  getEmployeeRequests: (userId: number | string) =>
     client.get<LeaveRequestsResponse>(`/leave_requests/employee/${userId}`),
 
   // Submit leave application

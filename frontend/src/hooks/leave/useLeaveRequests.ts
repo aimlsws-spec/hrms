@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { leavesApi } from '../../api/leaves'
 import type { LeaveRequest } from '../../types/leave'
 
-export function useLeaveRequests(isHRAdmin: boolean, userId?: number) {
+export function useLeaveRequests(isHRAdmin: boolean, userId?: number | string) {
   const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
 

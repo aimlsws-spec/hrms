@@ -67,6 +67,7 @@ def get_hr_activity_logs(
     search: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    role: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Retrieve filtered, paginated HR activity logs."""
     try:
@@ -79,6 +80,10 @@ def get_hr_activity_logs(
         if action and action.strip():
             conditions.append("action = %s")
             params.append(action.strip().upper())
+
+        if role and role.strip():
+            conditions.append("LOWER(performed_role) = %s")
+            params.append(role.strip().lower())
 
         if search and search.strip():
             term = f"%{search.strip()}%"

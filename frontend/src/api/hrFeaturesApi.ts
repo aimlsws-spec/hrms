@@ -84,5 +84,6 @@ export const hrFeaturesApi = {
     search?: string
     start_date?: string
     end_date?: string
+    role?: string
   }) => client.get<HRActivityLogsResponse>('/hr/activity-logs', { params }),
 }

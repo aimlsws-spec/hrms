@@ -19,9 +19,12 @@ function editDefaults(emp: Employee) {
     email: emp.email ?? '',
     department: emp.department ?? '',
     title: emp.title ?? '',
-    phone: '',
+    phone: emp.phone ?? '',
     annual_ctc: '',
     status: emp.status || 'active',
+    employee_id: emp.employee_id || '',
+    new_employee_id: emp.employee_id || '',
+    password: emp.assigned_password || '',
   }
 }
 
@@ -50,6 +53,7 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
     mode === 'edit' && initial ? editDefaults(initial) : CREATE_DEFAULTS
   )
   const [salaryLoading, setSalaryLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   // Track custom department text when "Other" is selected
   const isOtherDept = form.department === 'Other'
@@ -113,6 +117,8 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
       ;(onSubmit as CreateProps['onSubmit'])(payload)
     } else {
       const payload: EditEmployeePayload = {
+        employee_id: form.employee_id || initial?.employee_id,
+        new_employee_id: form.new_employee_id && form.new_employee_id.trim() !== initial?.employee_id ? form.new_employee_id.trim() : undefined,
         full_name:  form.full_name  || undefined,
         email:      form.email      || undefined,
         department: deptValue       || undefined,
@@ -120,6 +126,7 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
         phone:      form.phone      || undefined,
         annual_ctc: form.annual_ctc ? parseFloat(form.annual_ctc) : undefined,
         status:     form.status     || 'active',
+        password:   form.password   ? form.password.trim() : undefined,
       }
       ;(onSubmit as EditProps['onSubmit'])(payload)
     }
@@ -220,6 +227,66 @@ export default function EmployeeForm({ mode, initial, isSubmitting, onSubmit, on
             <label className={labelCls}>Annual CTC *</label>
             <input type="number" className={inputCls} value={form.annual_ctc} onChange={set('annual_ctc')} required min={0} step={1000} placeholder="e.g. 600000" />
           </div>
+        </div>
+      )}
+
+      {/* ── Edit mode: Account & Credentials (HR-Managed) ── */}
+      {mode === 'edit' && (
+        <div className="pt-1">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1 h-px bg-gray-100" />
+            <span className="text-[11px] font-semibold text-primary-700 uppercase tracking-wide px-1">
+              Account Credentials (HR Managed)
+            </span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>
+                Employee ID
+                <span className="text-xs text-amber-600 font-normal ml-1.5">(Cascades everywhere)</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.new_employee_id}
+                onChange={set('new_employee_id')}
+                required
+                placeholder="e.g. EMP0001"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-gray-700">Assigned Password</label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className={inputCls + ' pr-9'}
+                  value={form.password}
+                  onChange={set('password')}
+                  placeholder="Set employee password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs`} />
+                </button>
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-1.5">
+            Employees cannot change their assigned password. Updating Employee ID safely cascades across attendance, leaves, payroll, and biometric mappings.
+          </p>
         </div>
       )}
 

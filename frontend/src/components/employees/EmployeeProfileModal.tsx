@@ -3,6 +3,7 @@ import { useProfileImageStore }      from '../../store/profileImageStore'
 import { hrSalaryApi }               from '../../api/hrSalaryApi'
 import type { EmployeeSalaryRecord } from '../../api/hrSalaryApi'
 import type { Employee }             from '../../types/employee'
+import PasswordViewer                from '../common/PasswordViewer'
 
 interface Props {
   employee: Employee | null
@@ -144,10 +145,55 @@ export default function EmployeeProfileModal({ employee, onClose }: Props) {
             <InfoRow icon="fa-solid fa-building"   iconBg="bg-blue-50"   iconColor="text-blue-500"    label="Department"   value={employee.department}  />
             <InfoRow icon="fa-solid fa-briefcase"  iconBg="bg-violet-50" iconColor="text-violet-500"  label="Designation"  value={employee.title}       />
             <InfoRow icon="fa-solid fa-envelope"   iconBg="bg-teal-50"   iconColor="text-teal-500"    label="Email"        value={employee.email}       />
+            {employee.phone && (
+              <InfoRow icon="fa-solid fa-phone"      iconBg="bg-blue-50"   iconColor="text-blue-500"    label="Phone"        value={employee.phone}       />
+            )}
             {location && (
               <InfoRow icon="fa-solid fa-location-dot" iconBg="bg-rose-50" iconColor="text-rose-500" label="Location" value={location} />
             )}
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-key text-amber-500 text-[11px]" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 leading-none">Assigned Password</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">HR Controlled</p>
+                </div>
+              </div>
+              <PasswordViewer password={employee.assigned_password} />
+            </div>
           </div>
+
+          {/* KYC & Identity Details */}
+          {(employee.aadhaar_number || employee.pan_number || employee.emergency_contact_name || employee.current_address) && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                  <i className="fa-solid fa-address-card text-cyan-600 text-[11px]" />
+                </div>
+                <p className="text-[13px] font-semibold text-gray-800">KYC & Identity Details</p>
+              </div>
+              {employee.aadhaar_number && (
+                <InfoRow icon="fa-solid fa-fingerprint" iconBg="bg-cyan-50" iconColor="text-cyan-600" label="Aadhaar Number" value={`•••• •••• ${employee.aadhaar_number.slice(-4)}`} />
+              )}
+              {employee.pan_number && (
+                <InfoRow icon="fa-solid fa-id-card" iconBg="bg-indigo-50" iconColor="text-indigo-600" label="PAN Number" value={employee.pan_number} />
+              )}
+              {employee.emergency_contact_name && (
+                <InfoRow
+                  icon="fa-solid fa-phone-volume"
+                  iconBg="bg-rose-50"
+                  iconColor="text-rose-500"
+                  label="Emergency Contact"
+                  value={`${employee.emergency_contact_name} (${employee.emergency_contact_relation || 'Relation'})${employee.emergency_number ? ` • ${employee.emergency_number}` : ''}`}
+                />
+              )}
+              {employee.current_address && (
+                <InfoRow icon="fa-solid fa-house" iconBg="bg-slate-50" iconColor="text-slate-500" label="Residential Address" value={employee.current_address} />
+              )}
+            </div>
+          )}
 
           {/* Salary Breakdown */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4">

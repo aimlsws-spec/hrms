@@ -50,22 +50,22 @@ function RootRedirect() {
 export const router = createBrowserRouter([
   // ── Public ────────────────────────────────────────────────────────────
   { path: '/login',           element: <LoginPage /> },
-  { path: '/signup',          element: <EmployeeSignupPage /> },
-  { path: '/employee/signup', element: <EmployeeSignupPage /> },
+  { path: '/signup',          element: <Navigate to="/login" replace /> },
+  { path: '/employee/signup', element: <Navigate to="/login" replace /> },
 
   // ── Root redirect ─────────────────────────────────────────────────────
   { path: '/', element: <RootRedirect /> },
 
   // ── HR / Admin / Manager panel ────────────────────────────────────────
   {
-    element: <ProtectedRoute allowedRoles={['admin', 'hr', 'manager']} />,
+    element: <ProtectedRoute allowedRoles={['admin', 'hr', 'sub_hr', 'manager']} />,
     children: [{
       element: <MainLayout />,
       children: [
         { path: '/hr/dashboard', element: <DashboardPage /> },
         { path: '/leaves',       element: <LeavePage /> },
         {
-          element: <ProtectedRoute allowedRoles={['admin', 'hr']} />,
+          element: <ProtectedRoute allowedRoles={['admin', 'hr', 'sub_hr']} />,
           children: [
             { path: '/employees',   element: <EmployeesPage /> },
             { path: '/payroll',     element: <HRPayrollPage /> },

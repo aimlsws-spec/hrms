@@ -1,8 +1,14 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import { useAuthStore } from '../../store/authStore'
+import FirstLoginDetailsModal from '../employee/FirstLoginDetailsModal'
 
 export default function MainLayout() {
+  const { user } = useAuthStore()
+  const showFirstLoginModal =
+    user?.role === 'employee' && user?.profile_completed === false
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar />
@@ -12,6 +18,11 @@ export default function MainLayout() {
           <Outlet />
         </main>
       </div>
+
+      <FirstLoginDetailsModal
+        isOpen={Boolean(showFirstLoginModal)}
+        onCompleted={() => {}}
+      />
     </div>
   )
 }

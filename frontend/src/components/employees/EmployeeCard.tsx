@@ -1,6 +1,7 @@
 import type { Employee } from '../../types/employee'
 import Badge from '../ui/Badge'
 import EmployeeActions from './EmployeeActions'
+import PasswordViewer from '../common/PasswordViewer'
 
 interface Props {
   employee: Employee
@@ -65,8 +66,9 @@ export default function EmployeeCard({
       </div>
 
       {/* ID + actions */}
-      <div className="text-right shrink-0 space-y-2">
-        <p className="text-xs font-mono text-gray-400">{employee.employee_id}</p>
+      <div className="text-right shrink-0 space-y-1.5 flex flex-col items-end">
+        <p className="text-xs font-mono font-medium text-gray-700">{employee.employee_id}</p>
+        <PasswordViewer password={employee.assigned_password} />
         <EmployeeActions
           employee={employee}
           onEdit={onEdit}

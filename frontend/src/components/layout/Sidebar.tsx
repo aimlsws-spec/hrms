@@ -12,27 +12,27 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/hr/dashboard', label: 'Dashboard',       icon: 'fas fa-chart-pie',      roles: ['admin', 'hr', 'manager'] },
-  { to: '/employees',    label: 'Employees',        icon: 'fas fa-users',          roles: ['admin', 'hr'] },
-  { to: '/leaves',       label: 'Leave Management', icon: 'fas fa-calendar-alt',   roles: ['admin', 'hr', 'manager'] },
-  { to: '/payroll',      label: 'Payroll',          icon: 'fas fa-money-bill-wave', roles: ['admin', 'hr'] },
-  { to: '/documents',    label: 'Documents',        icon: 'fas fa-file-alt',       roles: ['admin', 'hr'] },
+  { to: '/hr/dashboard', label: 'Dashboard',       icon: 'fas fa-chart-pie',      roles: ['admin', 'hr', 'sub_hr', 'manager'] },
+  { to: '/employees',    label: 'Employees',        icon: 'fas fa-users',          roles: ['admin', 'hr', 'sub_hr'] },
+  { to: '/leaves',       label: 'Leave Management', icon: 'fas fa-calendar-alt',   roles: ['admin', 'hr', 'sub_hr', 'manager'] },
+  { to: '/payroll',      label: 'Payroll',          icon: 'fas fa-money-bill-wave', roles: ['admin', 'hr', 'sub_hr'] },
+  { to: '/documents',    label: 'Documents',        icon: 'fas fa-file-alt',       roles: ['admin', 'hr', 'sub_hr'] },
   {
     to: '/attendance',
     label: 'Attendance',
     icon: 'fas fa-clock',
-    roles: ['admin', 'hr'],
+    roles: ['admin', 'hr', 'sub_hr'],
     children: [
-      { to: '/attendance',              label: 'Records',         icon: 'fas fa-calendar-check',   roles: ['admin', 'hr'] },
-      { to: '/attendance/wfo',          label: 'WFO View',        icon: 'fas fa-building',          roles: ['admin', 'hr'] },
-      { to: '/attendance/wfh',          label: 'WFH View',        icon: 'fas fa-house',             roles: ['admin', 'hr'] },
-      { to: '/attendance/work-hours',   label: 'Hours & Breaks',  icon: 'fas fa-stopwatch',         roles: ['admin', 'hr'] },
-      { to: '/attendance/evidence',     label: 'Selfie & Location', icon: 'fas fa-camera-retro',   roles: ['admin', 'hr'] },
+      { to: '/attendance',              label: 'Records',         icon: 'fas fa-calendar-check',   roles: ['admin', 'hr', 'sub_hr'] },
+      { to: '/attendance/wfo',          label: 'WFO View',        icon: 'fas fa-building',          roles: ['admin', 'hr', 'sub_hr'] },
+      { to: '/attendance/wfh',          label: 'WFH View',        icon: 'fas fa-house',             roles: ['admin', 'hr', 'sub_hr'] },
+      { to: '/attendance/work-hours',   label: 'Hours & Breaks',  icon: 'fas fa-stopwatch',         roles: ['admin', 'hr', 'sub_hr'] },
+      { to: '/attendance/evidence',     label: 'Selfie & Location', icon: 'fas fa-camera-retro',   roles: ['admin', 'hr', 'sub_hr'] },
     ],
   },
-  { to: '/analytics',    label: 'Analytics',        icon: 'fas fa-chart-line',     roles: ['admin', 'hr'] },
-  { to: '/hr/home-location-requests', label: 'Location Requests', icon: 'fas fa-map-marker-alt', roles: ['admin', 'hr'] },
-  { to: '/hr/activity-logs', label: 'HR Activity Log', icon: 'fas fa-history', roles: ['admin', 'hr'] },
+  { to: '/analytics',    label: 'Analytics',        icon: 'fas fa-chart-line',     roles: ['admin', 'hr', 'sub_hr'] },
+  { to: '/hr/home-location-requests', label: 'Location Requests', icon: 'fas fa-map-marker-alt', roles: ['admin', 'hr', 'sub_hr'] },
+  { to: '/hr/activity-logs', label: 'HR Activity Log', icon: 'fas fa-history', roles: ['admin', 'hr', 'sub_hr'] },
   // LIVE-PUNCH DISABLED: biometric menu hidden while device integration is paused.
   // {
   //   to: '/biometric',

@@ -19,7 +19,7 @@ type ActiveTab = 'requests' | 'balances' | 'calendar'
 
 export default function LeavePage() {
   const { user } = useAuthStore()
-  const isHRAdmin = user?.role === 'admin' || user?.role === 'hr'
+  const isHRAdmin = user?.role === 'admin' || user?.role === 'hr' || user?.role === 'sub_hr'
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('requests')
   const [showAddModal, setShowAddModal] = useState(false)
@@ -45,7 +45,9 @@ export default function LeavePage() {
   function handleReject(id: number) {
     const reason = window.prompt('Enter reason for rejection (optional):')
     if (reason === null) return
-    rejectRequest(id, user?.full_name ?? 'HR', reason)
+    const roleTag = user?.role === 'sub_hr' ? 'Sub-HR' : user?.role === 'hr' ? 'HR Head' : 'HR'
+    const rejectorName = `${user?.full_name ?? 'HR'} (${roleTag})`
+    rejectRequest(id, rejectorName, reason)
   }
 
   async function handleDelete(id: number) {

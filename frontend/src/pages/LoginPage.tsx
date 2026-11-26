@@ -58,7 +58,19 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       const { data } = await authApi.login({ username: username.trim(), password })
-      if (data.success && data.requires_otp) {
+      if (data.success && data.user && data.token) {
+        const roleHome = getRoleHome(data.user.role)
+        setUser({
+          user_id:   data.user.user_id,
+          username:  data.user.username,
+          email:     data.user.email,
+          full_name: data.user.full_name,
+          role:      data.user.role,
+          token:     data.token,
+        })
+        setSuccessMsg('Login successful!')
+        setTimeout(() => navigate(roleHome, { replace: true }), 600)
+      } else if (data.success && data.requires_otp) {
         setOtpHint(data.otp ?? '')
         setSuccessMsg(data.message || 'OTP generated successfully.')
         setStep('otp')

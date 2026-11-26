@@ -23,10 +23,11 @@ APP_URL = os.getenv("APP_URL", os.getenv("FRONTEND_URL", "http://localhost:3000"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGO_PATH = os.path.join(BASE_DIR, "images", "seawind_logo.png")
+COMPANY_LOGO_URL = "https://www.seawindsolution.com/assets/front/images/Seawind-logo-1.png"
 
 
-def send_raw_email(to_email: str, subject: str, html_content: str, text_content: str = "", attach_logo: bool = True) -> dict:
-    """Send an email using SMTP (SSL for 465, STARTTLS for 587) with optional inline logo attachment."""
+def send_raw_email(to_email: str, subject: str, html_content: str, text_content: str = "", attach_logo: bool = False) -> dict:
+    """Send an email using SMTP (SSL for 465, STARTTLS for 587) with clean hosted logo (no noname attachment chips)."""
     if not to_email or "@" not in to_email:
         return {"success": False, "error": f"Invalid recipient email: {to_email}"}
 
@@ -45,17 +46,18 @@ def send_raw_email(to_email: str, subject: str, html_content: str, text_content:
 
         msg.add_alternative(html_content, subtype="html")
 
-        # Attach inline company logo if present so clients render it via cid:seawind_logo
+        # Only attach inline logo if explicitly requested; hosted URL is preferred to avoid [noname] Gmail chips
         if attach_logo and os.path.exists(LOGO_PATH):
             try:
                 with open(LOGO_PATH, "rb") as f:
                     logo_bytes = f.read()
-                # The html part is at index 1
                 msg.get_payload()[1].add_related(
                     logo_bytes,
                     maintype="image",
                     subtype="png",
                     cid="<seawind_logo>",
+                    filename="seawind-logo.png",
+                    disposition="inline",
                 )
             except Exception as att_err:
                 logger.warning("Could not attach inline logo: %s", att_err)
@@ -120,7 +122,7 @@ def build_invitation_html(
                     <tr>
                         <td style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 28px 24px; text-align: center;">
                             <div style="background-color: #ffffff; display: inline-block; padding: 8px 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px;">
-                                <img src="cid:seawind_logo" alt="SeaWind - Regeneration of IT Services" width="160" style="display: block; width: 160px; max-width: 100%; height: auto; border: 0;" />
+                                <img src="{COMPANY_LOGO_URL}" alt="SeaWind - Regeneration of IT Services" width="160" style="display: block; width: 160px; max-width: 100%; height: auto; border: 0;" />
                             </div>
                             <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Seawind Solution HRMS</h1>
                             <p style="margin: 4px 0 0 0; color: #bfdbfe; font-size: 13px; font-weight: 500;">Regeneration of IT Services</p>
@@ -218,7 +220,7 @@ def build_otp_html(otp: str) -> str:
                     <tr>
                         <td style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 28px 24px; text-align: center;">
                             <div style="background-color: #ffffff; display: inline-block; padding: 8px 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px;">
-                                <img src="cid:seawind_logo" alt="SeaWind - Regeneration of IT Services" width="150" style="display: block; width: 150px; max-width: 100%; height: auto; border: 0;" />
+                                <img src="{COMPANY_LOGO_URL}" alt="SeaWind - Regeneration of IT Services" width="150" style="display: block; width: 150px; max-width: 100%; height: auto; border: 0;" />
                             </div>
                             <h1 style="margin: 0; color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: -0.5px;">Seawind Solution HRMS</h1>
                             <p style="margin: 4px 0 0 0; color: #bfdbfe; font-size: 13px; font-weight: 500;">One-Time Password (OTP) Verification</p>
@@ -297,7 +299,7 @@ def send_employee_invitation(
         f"Best regards,\nHR Department\nSeawind Solution\n{EMAIL_USER}"
     )
 
-    return send_raw_email(to_email=email, subject=subject, html_content=html_content, text_content=text_content, attach_logo=True)
+    return send_raw_email(to_email=email, subject=subject, html_content=html_content, text_content=text_content, attach_logo=False)
 
 
 def send_otp_email(to_email: str, otp: str) -> dict:
@@ -305,7 +307,7 @@ def send_otp_email(to_email: str, otp: str) -> dict:
     subject = "Seawind Solution HRMS - Your Login OTP"
     html_content = build_otp_html(otp=otp)
     text_content = f"Your Seawind Solution HRMS login OTP is: {otp}. This code is confidential."
-    return send_raw_email(to_email=to_email, subject=subject, html_content=html_content, text_content=text_content, attach_logo=True)
+    return send_raw_email(to_email=to_email, subject=subject, html_content=html_content, text_content=text_content, attach_logo=False)
 
 
 def send_invitation_in_background(

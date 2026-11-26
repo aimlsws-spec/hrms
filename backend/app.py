@@ -1147,52 +1147,36 @@ async def login(request: LoginRequest):
             )
             return {"success": False, "message": "Invalid username or password"}
         
-        # Generate simple OTP
-        import random
-        import smtplib
-        from email.message import EmailMessage
-        import os
+        # Credentials verified - Direct login (no OTP step required per company invitation policy)
+        audit_logger.log_login_attempt(
+            user_id=user['user_id'],
+            username=request.username,
+            status="SUCCESS",
+            ip_address="127.0.0.1"
+        )
         
-        otp = str(random.randint(100000, 999999))
-        
-        user_role = user.get('role', '').lower()
-        if user_role == 'employee':
-            user_email = user.get('email')
-            if user_email:
-                try:
-                    from backend.core.mailer import send_otp_email
-                    print(f"\n==========================================")
-                    print(f"OTP GENERATED FOR {user_email}: {otp}")
-                    print(f"==========================================\n")
-
-                    mail_res = send_otp_email(to_email=user_email, otp=otp)
-                    email_sent = mail_res.get("success", False)
-                    if email_sent:
-                        print("OTP Email successfully dispatched with official logo!")
-                    else:
-                        print(f"SMTP dispatch note: {mail_res.get('error')}")
-                except Exception as e:
-                    print(f"==========================================")
-                    print(f"CRITICAL ERROR: Failed to send OTP email: {e}")
-                    print(f"==========================================")
-            
-            email_sent = 'email_sent' in locals() and email_sent
-            resp = {
-                "success": True,
-                "requires_otp": True,
-                "message": f"OTP sent to {user_email}" if email_sent else (f"Email dispatch failed. Fallback OTP: {otp}" if user_email else "OTP generated"),
+        role_dashboards = {
+            'admin': '/dashboard',
+            'hr': '/dashboard',
+            'sub_hr': '/dashboard',
+            'accountant': '/accountant',
+            'support': '/support',
+            'employee': '/employee/dashboard',
+        }
+        dashboard = role_dashboards.get(user.get('role', ''), '/dashboard')
+        return {
+            "success": True,
+            "dashboard": dashboard,
+            "token": f"token_{user['user_id']}",
+            "user": {
+                "user_id": user['user_id'],
+                "username": user['username'],
+                "email": user.get('email', ''),
+                "full_name": user.get('full_name', ''),
+                "role": user['role'],
+                "profile_completed": bool(user.get('profile_completed', 0))
             }
-            # If email delivery failed or was not configured, provide OTP so employee is not blocked
-            if not email_sent:
-                resp["otp"] = otp
-            return resp
-        else:
-            return {
-                "success": True,
-                "requires_otp": True,
-                "otp": otp,
-                "message": "OTP generated (Dev bypass)"
-            }
+        }
     except Exception as e:
         return {"success": False, "message": str(e)}
 

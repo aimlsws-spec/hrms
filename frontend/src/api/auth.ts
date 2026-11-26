@@ -28,6 +28,9 @@ export interface LoginResponse {
   requires_otp?: boolean
   otp?: string
   message?: string
+  user?: BackendUser
+  token?: string
+  dashboard?: string
 }
 
 interface BackendUser {

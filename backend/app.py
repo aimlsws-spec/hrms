@@ -1105,8 +1105,8 @@ async def login(request: LoginRequest):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Check in users table
-        cursor.execute("SELECT * FROM users WHERE username = %s", (request.username,))
+        # Check in users table (by username, email, or user_id)
+        cursor.execute("SELECT * FROM users WHERE username = %s OR email = %s OR user_id = %s", (request.username, request.username, request.username))
         user = cursor.fetchone()
         conn.close()
         
@@ -1256,7 +1256,7 @@ async def verify_otp(request: dict):
         
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        cursor.execute("SELECT * FROM users WHERE username = %s OR email = %s OR user_id = %s", (username, username, username))
         user = cursor.fetchone()
         conn.close()
         

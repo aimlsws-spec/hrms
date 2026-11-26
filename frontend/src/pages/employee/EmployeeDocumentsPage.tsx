@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuthStore }          from '../../store/authStore'
 import { useMyDocumentRequests } from '../../hooks/employee/documents/useMyDocumentRequests'
 import type {
@@ -98,6 +98,7 @@ interface CardProps {
   badge?: React.ReactNode
   children: React.ReactNode
 }
+
 function Card({ icon, iconBg, iconColor, title, subtitle, badge, children }: CardProps) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -132,12 +133,12 @@ function CountChip({ n }: { n: number }) {
 
 function EmptyState({ icon, message, sub }: { icon: string; message: string; sub?: string }) {
   return (
-    <div className="flex items-center gap-3 px-5 py-5">
-      <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-        <i className={`fa-solid ${icon} text-gray-300 text-[15px]`} />
+    <div className="flex items-center gap-3 px-5 py-8">
+      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+        <i className={`fa-solid ${icon} text-gray-300 text-[16px]`} />
       </div>
       <div>
-        <p className="text-[12px] font-medium text-gray-500">{message}</p>
+        <p className="text-[13px] font-medium text-gray-600">{message}</p>
         {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -156,11 +157,6 @@ function SkeletonRows({ count }: { count: number }) {
   )
 }
 
-// ── Input / Select shared style ───────────────────────────────────────────────
-
-const inputCls =
-  'w-full h-9 text-[12px] text-gray-700 bg-gray-50 border border-gray-200 rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400 transition-colors'
-
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function EmployeeDocumentsPage() {
@@ -168,43 +164,14 @@ export default function EmployeeDocumentsPage() {
   const employeeCode = toEmployeeCode(user?.user_id)
 
   const {
-    requests, loading: reqLoading, submitting,
-    submitError, submitSuccess, submitRequest,
+    requests, loading: reqLoading,
   } = useMyDocumentRequests(employeeCode)
 
-  // Build default requested_month as current YYYY-MM
-  const defaultMonth = (() => {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  })()
-
-  const [docType,         setDocType]         = useState(DOC_TYPES[0].value)
-  const [reason,          setReason]          = useState('')
-  const [requestedMonth,  setRequestedMonth]  = useState(defaultMonth)
-  const [genError,        setGenError]        = useState<string | null>(null)
-
-  useEffect(() => {
-    if (submitSuccess) {
-      setDocType(DOC_TYPES[0].value)
-      setReason('')
-      setRequestedMonth(defaultMonth)
-    }
-  }, [submitSuccess, defaultMonth])
+  const [genError, setGenError] = useState<string | null>(null)
 
   if (!user) return null
 
-  const readyDocuments = requests.filter(r => r.status === 'generated')
-  const pendingRequests = requests.filter(r => r.status !== 'generated')
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    await submitRequest({
-      employee_id:     employeeCode,
-      document_type:   docType,
-      reason:          reason.trim() || undefined,
-      requested_month: docType === 'salary-slip' ? requestedMonth : undefined,
-    })
-  }
+  const readyDocuments = requests.filter(r => r.status === 'generated' || (r.status === 'approved' && (r.file_url || r.file_html)))
 
   function buildSalarySlipUrl(req: DocumentRequest, forceDownload = false): string {
     const base = `${req.file_url}?employee_id=${encodeURIComponent(employeeCode)}`
@@ -253,94 +220,28 @@ export default function EmployeeDocumentsPage() {
         </div>
         <div>
           <h1 className="text-[16px] font-bold text-gray-800">My Documents</h1>
-          <p className="text-[11px] text-gray-400">Request HR documents and track their status</p>
+          <p className="text-[11px] text-gray-400">View and download official documents issued by HR</p>
         </div>
       </div>
 
-      {/* ── Section 1: Request a Document ── */}
-      <Card
-        icon="fa-paper-plane"
-        iconBg="bg-blue-50"
-        iconColor="text-blue-600"
-        title="Request a Document"
-        subtitle="Submit a request for official HR documents"
-      >
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1.5">Document Type</label>
-              <select
-                className={inputCls}
-                value={docType}
-                onChange={e => setDocType(e.target.value)}
-              >
-                {DOC_TYPES.map(d => (
-                  <option key={d.value} value={d.value}>{d.label}</option>
-                ))}
-              </select>
-            </div>
-            {docType === 'salary-slip' ? (
-              <div>
-                <label className="block text-[11px] font-medium text-gray-500 mb-1.5">Month</label>
-                <input
-                  type="month"
-                  className={inputCls}
-                  value={requestedMonth}
-                  onChange={e => setRequestedMonth(e.target.value)}
-                  required
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-[11px] font-medium text-gray-500 mb-1.5">
-                  Reason <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  className={inputCls}
-                  placeholder="e.g. Visa application, loan requirement…"
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                  maxLength={300}
-                />
-              </div>
-            )}
-          </div>
+      {/* ── Guidance Banner ── */}
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs">
+        <i className="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5 shrink-0" />
+        <div>
+          <p className="font-semibold text-slate-800">HR Issued Documents</p>
+          <p className="text-slate-500 mt-0.5">
+            Official letters (Appointment, Offer, Experience, Relieving) and certificates are generated and issued directly by HR. Once issued, your documents appear here for instant viewing and downloading.
+          </p>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="h-9 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-[12px] font-semibold px-5 rounded-xl transition-colors shrink-0"
-            >
-              {submitting
-                ? <><i className="fa-solid fa-circle-notch animate-spin text-[11px]" /> Submitting…</>
-                : <><i className="fa-solid fa-paper-plane text-[11px]" /> Submit Request</>
-              }
-            </button>
-            {submitSuccess && (
-              <span className="flex items-center gap-1.5 text-[12px] text-emerald-600 font-medium">
-                <i className="fa-solid fa-circle-check text-[11px]" />
-                Request submitted — HR will review it shortly
-              </span>
-            )}
-            {submitError && (
-              <span className="flex items-center gap-1.5 text-[12px] text-red-500">
-                <i className="fa-solid fa-circle-exclamation text-[11px]" />
-                {submitError}
-              </span>
-            )}
-          </div>
-        </form>
-      </Card>
-
-      {/* ── Section 2: Generated Documents ── */}
+      {/* ── Issued Documents Card ── */}
       <Card
         icon="fa-file-circle-check"
         iconBg="bg-emerald-50"
         iconColor="text-emerald-600"
-        title="Generated Documents"
-        subtitle="Documents ready to view and download"
+        title="Issued Documents"
+        subtitle="Official documents issued by HR ready to view and download"
         badge={!reqLoading && readyDocuments.length > 0 ? <CountChip n={readyDocuments.length} /> : undefined}
       >
         {reqLoading ? (
@@ -348,8 +249,8 @@ export default function EmployeeDocumentsPage() {
         ) : readyDocuments.length === 0 ? (
           <EmptyState
             icon="fa-file-circle-check"
-            message="No documents ready yet"
-            sub="Documents generated by HR will appear here"
+            message="No documents issued yet"
+            sub="Official documents generated and issued by HR will appear here"
           />
         ) : (
           <>
@@ -367,7 +268,7 @@ export default function EmployeeDocumentsPage() {
                       )}
                     </p>
                     <p className="text-[10px] text-gray-400 mt-0.5">
-                      Generated{' '}
+                      Issued{' '}
                       {new Date(req.updated_at ?? req.created_at).toLocaleDateString('en-IN', {
                         day: 'numeric', month: 'short', year: 'numeric',
                       })}
@@ -400,54 +301,6 @@ export default function EmployeeDocumentsPage() {
               </div>
             )}
           </>
-        )}
-      </Card>
-
-      {/* ── Section 3: My Requests ── */}
-      <Card
-        icon="fa-inbox"
-        iconBg="bg-slate-100"
-        iconColor="text-slate-500"
-        title="My Requests"
-        subtitle="Track the status of your document requests"
-        badge={!reqLoading && pendingRequests.length > 0 ? <CountChip n={pendingRequests.length} /> : undefined}
-      >
-        {reqLoading ? (
-          <SkeletonRows count={3} />
-        ) : pendingRequests.length === 0 ? (
-          <EmptyState
-            icon="fa-inbox"
-            message="No pending requests"
-            sub="Submit a request above and track its status here"
-          />
-        ) : (
-          <ul className="divide-y divide-gray-50">
-            {pendingRequests.map(req => (
-              <li key={req.id} className="px-5 py-4 hover:bg-gray-50/60 transition-colors">
-                <div className="flex items-center gap-3">
-                  <DocTypeIcon type={req.document_type} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-gray-800 leading-tight">
-                      {docTypeLabel(req.document_type)}
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                      {new Date(req.created_at).toLocaleDateString('en-IN', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                      })}
-                      {req.reason && <> &middot; {req.reason}</>}
-                    </p>
-                  </div>
-                  <StatusBadge status={req.status} />
-                </div>
-                {req.status === 'rejected' && req.rejected_reason && (
-                  <div className="mt-2.5 ml-11 flex items-start gap-1.5">
-                    <i className="fa-solid fa-circle-info text-red-400 text-[10px] mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-red-500 leading-snug">{req.rejected_reason}</p>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
         )}
       </Card>
 

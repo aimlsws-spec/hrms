@@ -74,25 +74,12 @@ function fmtMonthLabel(yyyyMM?: string | null): string {
 
 function PayslipsTab({ employeeCode }: { employeeCode: string }) {
   const {
-    requests, loading: reqLoading, submitting,
-    submitError, submitSuccess, submitRequest,
+    requests, loading: reqLoading,
   } = useMyDocumentRequests(employeeCode)
 
-  const [month, setMonth] = useState(defaultMonth)
-
   // Only salary slips concern this tab
-  const slips        = requests.filter(r => r.document_type === 'salary-slip')
-  const readySlips   = slips.filter(r => r.status === 'generated' && r.file_url)
-  const pendingSlips = slips.filter(r => !(r.status === 'generated' && r.file_url))
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    await submitRequest({
-      employee_id:     employeeCode,
-      document_type:   'salary-slip',
-      requested_month: month,
-    })
-  }
+  const slips      = requests.filter(r => r.document_type === 'salary-slip')
+  const readySlips = slips.filter(r => r.status === 'generated' && r.file_url)
 
   // The accountant-generated payslip is served as a PDF in the Seawind format.
   function buildSlipUrl(req: DocumentRequest, forceDownload = false): string {
@@ -100,65 +87,36 @@ function PayslipsTab({ employeeCode }: { employeeCode: string }) {
     return forceDownload ? `${base}&force_download=true` : base
   }
 
-  const inputCls = 'h-10 px-3 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-900 focus:outline-none focus:border-primary-700 focus:bg-white transition-all'
-
   return (
     <div className="space-y-5">
-      {/* Request a payslip */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Request Payslip</p>
-        <p className="text-[12px] text-gray-500 mb-4">
-          Submit a request for your official payslip. Once HR approves and the accountant generates it,
-          it appears below in the Seawind Solutions format.
-        </p>
-        <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
-          <div className="flex-1 min-w-[180px]">
-            <label className="block text-[11px] font-medium text-gray-500 mb-1.5">Month</label>
-            <input
-              type="month"
-              className={inputCls + ' w-full'}
-              value={month}
-              onChange={e => setMonth(e.target.value)}
-              max={defaultMonth}
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="h-10 px-5 bg-primary-900 hover:bg-primary-800 disabled:opacity-60 text-white text-[13px] font-semibold rounded-xl transition-colors shrink-0 flex items-center gap-2"
-          >
-            {submitting
-              ? <><i className="fa-solid fa-circle-notch animate-spin text-[11px]" /> Submitting…</>
-              : <><i className="fa-solid fa-paper-plane text-[11px]" /> Request Payslip</>}
-          </button>
-        </form>
-        <div className="mt-3 min-h-[18px]">
-          {submitSuccess && (
-            <span className="text-[12px] text-emerald-600 font-medium flex items-center gap-1.5">
-              <i className="fa-solid fa-circle-check text-[11px]" /> Request submitted — HR will review it shortly
-            </span>
-          )}
-          {submitError && (
-            <span className="text-[12px] text-red-500 flex items-center gap-1.5">
-              <i className="fa-solid fa-circle-exclamation text-[11px]" />{submitError}
-            </span>
-          )}
+      {/* Informational Guidance */}
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs">
+        <i className="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5 shrink-0" />
+        <div>
+          <p className="font-semibold text-slate-800">Monthly Payslips</p>
+          <p className="text-slate-500 mt-0.5">
+            Official salary payslips are generated and issued directly by Accounting &amp; HR each month. Issued payslips appear below for immediate viewing and download.
+          </p>
         </div>
       </div>
 
       {/* Generated payslips */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Generated Payslips</p>
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Issued Payslips</p>
+          {!reqLoading && readySlips.length > 0 && (
+            <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+              {readySlips.length}
+            </span>
+          )}
         </div>
         {reqLoading ? (
           <div className="space-y-2 p-4">{[0,1].map(i => <div key={i} className="h-12 bg-gray-50 rounded-xl animate-pulse" />)}</div>
         ) : readySlips.length === 0 ? (
           <div className="flex flex-col items-center py-10 text-center px-4">
             <i className="fa-solid fa-file-invoice-dollar text-gray-200 text-[28px] mb-3" />
-            <p className="text-[13px] font-medium text-gray-400">No payslips ready yet</p>
-            <p className="text-[11px] text-gray-400 mt-1">Approved &amp; generated payslips appear here</p>
+            <p className="text-[13px] font-medium text-gray-400">No payslips issued yet</p>
+            <p className="text-[11px] text-gray-400 mt-1">Official payslips issued by HR and Accounting will appear here</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-50">
@@ -173,7 +131,7 @@ function PayslipsTab({ employeeCode }: { employeeCode: string }) {
                     {req.requested_month && <span className="ml-1 text-[11px] font-normal text-gray-500">— {fmtMonthLabel(req.requested_month)}</span>}
                   </p>
                   <p className="text-[10px] text-gray-400">
-                    Generated {new Date(req.updated_at ?? req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    Issued {new Date(req.updated_at ?? req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
                 <DocStatusBadge status={req.status} />
@@ -191,49 +149,6 @@ function PayslipsTab({ employeeCode }: { employeeCode: string }) {
                     <i className="fa-solid fa-download text-[10px]" /> Download
                   </button>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* My payslip requests */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">My Payslip Requests</p>
-        </div>
-        {reqLoading ? (
-          <div className="space-y-2 p-4">{[0,1].map(i => <div key={i} className="h-12 bg-gray-50 rounded-xl animate-pulse" />)}</div>
-        ) : pendingSlips.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-center px-4">
-            <i className="fa-solid fa-inbox text-gray-200 text-[28px] mb-3" />
-            <p className="text-[13px] font-medium text-gray-400">No payslip requests yet</p>
-            <p className="text-[11px] text-gray-400 mt-1">Request one above and track its status here</p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-gray-50">
-            {pendingSlips.map(req => (
-              <li key={req.id} className="px-5 py-3 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-file-invoice-dollar text-slate-400 text-[12px]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-gray-800">
-                      Payslip
-                      {req.requested_month && <span className="ml-1 text-[11px] font-normal text-gray-500">— {fmtMonthLabel(req.requested_month)}</span>}
-                    </p>
-                    <p className="text-[10px] text-gray-400">
-                      Requested {new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  <DocStatusBadge status={req.status} />
-                </div>
-                {req.status === 'rejected' && req.rejected_reason && (
-                  <p className="mt-2 ml-11 text-[11px] text-red-500 flex items-center gap-1.5">
-                    <i className="fa-solid fa-circle-info text-[10px]" />{req.rejected_reason}
-                  </p>
-                )}
               </li>
             ))}
           </ul>
@@ -272,24 +187,13 @@ function DocStatusBadge({ status }: { status: DocumentRequestStatus }) {
 
 function DocumentsTab({ employeeCode }: { employeeCode: string }) {
   const {
-    requests, loading: reqLoading, submitting,
-    submitError, submitSuccess, submitRequest,
+    requests, loading: reqLoading,
   } = useMyDocumentRequests(employeeCode)
 
-  const [docType,      setDocType]      = useState(DOC_TYPES[0].value)
-  const [reason,       setReason]       = useState('')
   const [generatingId, setGeneratingId] = useState<number | null>(null)
   const [genError,     setGenError]     = useState<string | null>(null)
 
-  useEffect(() => { if (submitSuccess) { setDocType(DOC_TYPES[0].value); setReason('') } }, [submitSuccess])
-
-  const readyDocs    = requests.filter(r => r.status === 'generated' || (r.status === 'approved' && (r.file_html || r.file_url)))
-  const pendingReqs  = requests.filter(r => !readyDocs.includes(r))
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    await submitRequest({ employee_id: employeeCode, document_type: docType, reason: reason.trim() || undefined })
-  }
+  const readyDocs = requests.filter(r => r.status === 'generated' || (r.status === 'approved' && (r.file_html || r.file_url)))
 
   async function handleView(req: DocumentRequest) {
     if (generatingId !== null) return
@@ -309,50 +213,36 @@ function DocumentsTab({ employeeCode }: { employeeCode: string }) {
     finally { setGeneratingId(null) }
   }
 
-  const inputCls = 'w-full text-[12px] text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400'
-
   return (
     <div className="space-y-5">
-      {/* Request */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">Request a Document</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1.5">Document Type</label>
-              <select className={inputCls} value={docType} onChange={e => setDocType(e.target.value)}>
-                {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1.5">Reason <span className="font-normal text-gray-400">(optional)</span></label>
-              <input type="text" className={inputCls} placeholder="e.g. Visa application, loan…" value={reason} onChange={e => setReason(e.target.value)} maxLength={300} />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="submit" disabled={submitting}
-              className="flex items-center gap-2 bg-primary-900 hover:bg-primary-800 disabled:opacity-60 text-white text-[12px] font-semibold px-5 py-2.5 rounded-xl transition-colors">
-              {submitting
-                ? <><i className="fa-solid fa-circle-notch animate-spin text-[11px]" /> Submitting…</>
-                : <><i className="fa-solid fa-paper-plane text-[11px]" /> Submit Request</>}
-            </button>
-            {submitSuccess && <span className="text-[12px] text-emerald-600 font-medium flex items-center gap-1.5"><i className="fa-solid fa-circle-check text-[11px]" /> Submitted</span>}
-            {submitError  && <span className="text-[12px] text-red-500 flex items-center gap-1.5"><i className="fa-solid fa-circle-exclamation text-[11px]" />{submitError}</span>}
-          </div>
-        </form>
+      {/* Informational Guidance */}
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs">
+        <i className="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5 shrink-0" />
+        <div>
+          <p className="font-semibold text-slate-800">HR Issued Documents</p>
+          <p className="text-slate-500 mt-0.5">
+            Official letters (Appointment, Offer, Experience, Relieving) and certificates are generated and issued directly by HR. Issued documents appear below.
+          </p>
+        </div>
       </div>
 
       {/* Generated docs */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Generated Documents</p>
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Issued Documents</p>
+          {!reqLoading && readyDocs.length > 0 && (
+            <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+              {readyDocs.length}
+            </span>
+          )}
         </div>
         {reqLoading ? (
           <div className="space-y-2 p-4">{[0,1].map(i => <div key={i} className="h-12 bg-gray-50 rounded-xl animate-pulse" />)}</div>
         ) : readyDocs.length === 0 ? (
           <div className="flex flex-col items-center py-10 text-center px-4">
             <i className="fa-solid fa-file-circle-check text-gray-200 text-[28px] mb-3" />
-            <p className="text-[13px] font-medium text-gray-400">No generated documents yet</p>
+            <p className="text-[13px] font-medium text-gray-400">No documents issued yet</p>
+            <p className="text-[11px] text-gray-400 mt-1">Official documents issued by HR will appear here</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-50">
@@ -377,43 +267,6 @@ function DocumentsTab({ employeeCode }: { employeeCode: string }) {
           </ul>
         )}
         {genError && <p className="text-[11px] text-red-500 flex items-center gap-1.5 px-5 py-3 border-t border-gray-50"><i className="fa-solid fa-circle-exclamation text-[10px]" />{genError}</p>}
-      </div>
-
-      {/* Pending requests */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">My Requests</p>
-        </div>
-        {reqLoading ? (
-          <div className="space-y-2 p-4">{[0,1,2].map(i => <div key={i} className="h-12 bg-gray-50 rounded-xl animate-pulse" />)}</div>
-        ) : pendingReqs.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-center px-4">
-            <i className="fa-solid fa-inbox text-gray-200 text-[28px] mb-3" />
-            <p className="text-[13px] font-medium text-gray-400">No requests yet</p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-gray-50">
-            {pendingReqs.map(req => (
-              <li key={req.id} className="px-5 py-3 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-file-lines text-slate-400 text-[12px]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-gray-800">{DOC_TYPES.find(d => d.value === req.document_type)?.label ?? req.document_type}</p>
-                    <p className="text-[10px] text-gray-400">{new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{req.reason && ` · ${req.reason}`}</p>
-                  </div>
-                  <DocStatusBadge status={req.status} />
-                </div>
-                {req.status === 'rejected' && req.rejected_reason && (
-                  <p className="mt-2 ml-11 text-[11px] text-red-500 flex items-center gap-1.5">
-                    <i className="fa-solid fa-circle-info text-[10px]" />{req.rejected_reason}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </div>
   )

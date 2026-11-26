@@ -64,56 +64,14 @@ class DocumentRequestActionResponse(BaseModel):
 
 # ---------------------------------------------------------------------------
 # POST /api/documents/requests
-# Employee submits a document request
+# Employee submits a document request (DISABLED: documents issued directly by HR)
 # ---------------------------------------------------------------------------
 @router.post("/api/documents/requests")
 def create_document_request(payload: DocumentRequestPayload):
-    _ensure_document_requests_table()
-    conn = _db()
-    cur = conn.cursor(dictionary=True)
-
-    try:
-        # Get employee name
-        cur.execute(
-            "SELECT full_name FROM employees WHERE employee_code = %s LIMIT 1",
-            (payload.employee_id,)
-        )
-        emp = cur.fetchone()
-        emp_name = emp["full_name"] if emp else payload.employee_id
-
-        # Insert request
-        cur.execute("""
-            INSERT INTO document_requests
-                (employee_id, employee_name, document_type, reason, status, requested_month)
-            VALUES (%s, %s, %s, %s, 'pending', %s)
-        """, (
-            payload.employee_id,
-            emp_name,
-            payload.document_type,
-            payload.reason,
-            payload.requested_month
-        ))
-        conn.commit()
-        new_id = cur.lastrowid
-
-        # Return the created request
-        cur.execute("SELECT * FROM document_requests WHERE id = %s", (new_id,))
-        row = cur.fetchone()
-
-        return {
-            "success": True,
-            "message": "Document request submitted successfully",
-            "request": row
-        }
-    except HTTPException:
-        conn.rollback()
-        raise
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create request: {e}")
-    finally:
-        cur.close()
-        conn.close()
+    raise HTTPException(
+        status_code=403,
+        detail="Employee document requests are disabled. Official documents are generated and issued directly by HR."
+    )
 
 
 # ---------------------------------------------------------------------------

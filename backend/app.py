@@ -68,6 +68,8 @@ from backend.core.time_tracking import ensure_time_tracking_tables
 # LIVE-PUNCH DISABLED: from backend.core.biometric_live_api import router as biometric_live_router
 # LIVE-PUNCH DISABLED: from backend.core.biometric_sync import start_biometric_scheduler, stop_biometric_scheduler
 from backend.core.leave_accounting import credit_monthly_leaves, ensure_leave_ledger_table, record_leave_debit
+from backend.core.hr_features_api import router as hr_features_router
+from backend.core.hr_activity_logger import log_hr_activity
 
 
 from backend.config import DB_CONFIG
@@ -304,6 +306,29 @@ def _migrate_schema():
 
             # user ids are text (e.g. 'hr001'); the selfie audit log column was INT, so HR could not open selfies
             "ALTER TABLE selfie_access_log MODIFY COLUMN accessed_by_user_id VARCHAR(50) NOT NULL",
+
+            # ── Late arrival deduction review columns ──
+            "ALTER TABLE attendance_deductions ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'PENDING_REVIEW'",
+            "ALTER TABLE attendance_deductions ADD COLUMN reviewed_by VARCHAR(50) NULL",
+            "ALTER TABLE attendance_deductions ADD COLUMN reviewed_at DATETIME NULL",
+            "ALTER TABLE attendance_deductions ADD COLUMN review_notes TEXT NULL",
+
+            # ── HR activity logs table ──
+            """CREATE TABLE IF NOT EXISTS hr_activity_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                performed_by VARCHAR(50) NOT NULL,
+                performed_name VARCHAR(100) NOT NULL,
+                performed_role VARCHAR(50) DEFAULT 'hr',
+                action VARCHAR(100) NOT NULL,
+                target_employee_id VARCHAR(50) NULL,
+                target_employee_name VARCHAR(100) NULL,
+                details TEXT NOT NULL,
+                ip_address VARCHAR(45) DEFAULT '127.0.0.1',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_hr_act_user (performed_by),
+                INDEX idx_hr_act_target (target_employee_id),
+                INDEX idx_hr_act_created (created_at)
+            )""",
         ]
         for sql in stmts:
             try:
@@ -388,6 +413,7 @@ app.include_router(wfh_geo_router)
 app.include_router(time_tracking_router)
 # LIVE-PUNCH DISABLED: app.include_router(biometric_router)
 app.include_router(document_requests_router)
+app.include_router(hr_features_router)
 
 # Add CORS middleware
 # Note: allow_origins=["*"] is incompatible with allow_credentials=True (browsers reject it).
@@ -3239,6 +3265,16 @@ def _set_leave_status(request_id: int, status: str, actor: str = "HR", comments:
         conn.commit(); cursor.close(); conn.close()
 
         paid_leave_days_final = round(max(0.0, float(leave['days_count'] or 0) - unpaid_days), 2)
+        try:
+            log_hr_activity(
+                performed_by=actor,
+                performed_name=actor,
+                action=f"LEAVE_{status.upper()}",
+                target_employee_id=emp_id,
+                details=f"{status.capitalize()} leave request #{request_id} ({leave.get('leave_type')}, {leave.get('days_count')} days). Comments: {comments or 'None'}",
+            )
+        except Exception as log_err:
+            logger.warning("_set_leave_status hr activity log skipped: %s", log_err)
         logger.info(
             "_set_leave_status SUMMARY: leave_id=%d emp=%s leave_type=%s "
             "approved_days=%.2f available_balance=%.2f "
@@ -3529,6 +3565,39 @@ async def admin_create_leave(request: Request):
 
         if status.lower() == 'approved':
             res = _set_leave_status(request_id, 'Approved', actor=created_by, comments=reason)
+        else:
+            res = None
+
+        # Log HR Activity & notify employee
+        try:
+            client_ip = request.client.host if request.client else "127.0.0.1"
+            log_hr_activity(
+                performed_by=created_by,
+                performed_name=created_by,
+                action="APPLIED_LEAVE_ON_BEHALF",
+                target_employee_id=employee_id,
+                details=f"HR applied {leave_type} ({days_count} day(s): {start_date} to {end_date}) on behalf of employee. Reason: {reason or 'Recorded by HR'}",
+                ip_address=client_ip,
+            )
+            # Notification to employee
+            conn_n = get_db_connection()
+            cur_n = conn_n.cursor()
+            cur_n.execute(
+                """INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                   VALUES (%s, %s, %s, 'LEAVE', 0, NOW())""",
+                (
+                    employee_id,
+                    "Leave Recorded on Your Behalf",
+                    f"HR ({created_by}) has submitted a {leave_type} request ({days_count} day(s): {start_date} to {end_date}) on your behalf. Reason: {reason or 'Recorded by HR'}",
+                ),
+            )
+            conn_n.commit()
+            cur_n.close()
+            conn_n.close()
+        except Exception as act_err:
+            logger.warning("admin_create_leave logging/notification skipped: %s", act_err)
+
+        if status.lower() == 'approved':
             return {"success": True, "message": "Leave record created and approved", "request_id": request_id, "details": res}
         return {"success": True, "message": "Leave record created (pending approval)", "request_id": request_id}
     except Exception as e:

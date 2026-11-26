@@ -745,7 +745,6 @@ def apply_late_flags(cur, employee_id: str, target_date: date, check_in: time) -
         (employee_id, y, m),
     )
     late_days = int((cur.fetchone() or {}).get("n", 0) or 0)
-    half_days = late_days // LATE_DEDUCTION_EVERY
 
     cur.execute(
         """SELECT gross_salary FROM employee_salaries
@@ -756,22 +755,85 @@ def apply_late_flags(cur, employee_id: str, target_date: date, check_in: time) -
     sal   = cur.fetchone()
     gross = float(sal["gross_salary"]) if sal and sal.get("gross_salary") else 0.0
     half_day_rate = gross / calendar.monthrange(y, m)[1] / 2
-    amount = round(half_days * half_day_rate, 2)
+    suggested_amount = round(1 * half_day_rate, 2)
 
+    # Check for existing deduction review record
+    cur.execute(
+        """SELECT id, status, half_days_deducted, amount FROM attendance_deductions
+           WHERE employee_id = %s AND year = %s AND month = %s AND deduction_type = 'LATE_ARRIVAL'""",
+        (employee_id, y, m),
+    )
+    existing_ded = cur.fetchone()
+
+    half_days = 0
+    amount = 0.0
+
+    if late_days >= 4:
+        # Trigger HR review on fourth arrival after 9:50 AM (more than 3 lates)
+        if not existing_ded:
+            # First time reaching 4 late arrivals: create pending review record
+            cur.execute(
+                """INSERT INTO attendance_deductions
+                       (employee_id, year, month, deduction_type, late_count, half_days_deducted, amount, status)
+                   VALUES (%s, %s, %s, 'LATE_ARRIVAL', %s, 1, %s, 'PENDING_REVIEW')""",
+                (employee_id, y, m, late_days, suggested_amount),
+            )
+            # Notify HR & Admin for review decision
+            try:
+                cur.execute("SELECT user_id FROM users WHERE LOWER(role) IN ('hr', 'admin') AND COALESCE(is_active, 1) = 1")
+                hr_users = [r["user_id"] for r in cur.fetchall() if r.get("user_id")]
+                cur.execute(
+                    """SELECT full_name FROM users WHERE user_id = %s
+                       UNION SELECT full_name FROM employees WHERE employee_code = %s LIMIT 1""",
+                    (employee_id, employee_id),
+                )
+                emp_row = cur.fetchone()
+                emp_name = emp_row["full_name"] if emp_row and emp_row.get("full_name") else employee_id
+
+                for hr_uid in hr_users:
+                    cur.execute(
+                        """INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                           VALUES (%s, %s, %s, 'LATE_REVIEW', 0, NOW())""",
+                        (
+                            hr_uid,
+                            f"Late-Arrival Review: {emp_name}",
+                            f"{emp_name} ({employee_id}) has arrived late 4 times this month (after 09:50 AM). Action required: Review and decide whether to apply a half-day salary deduction or ignore it.",
+                        ),
+                    )
+            except Exception as notif_err:
+                log.warning("Failed to dispatch late review notification: %s", notif_err)
+        else:
+            # Record already exists; update late_count
+            if existing_ded.get("status") == "PENDING_REVIEW":
+                cur.execute(
+                    """UPDATE attendance_deductions
+                       SET late_count = %s, amount = %s
+                       WHERE id = %s""",
+                    (late_days, suggested_amount, existing_ded["id"]),
+                )
+            elif existing_ded.get("status") == "APPLIED":
+                half_days = int(existing_ded.get("half_days_deducted") or 1)
+                amount = float(existing_ded.get("amount") or suggested_amount)
+                cur.execute("UPDATE attendance_deductions SET late_count = %s WHERE id = %s", (late_days, existing_ded["id"]))
+            else:
+                # IGNORED
+                cur.execute("UPDATE attendance_deductions SET late_count = %s WHERE id = %s", (late_days, existing_ded["id"]))
+    else:
+        # Fewer than 4 late arrivals
+        if existing_ded and existing_ded.get("status") == "PENDING_REVIEW":
+            cur.execute(
+                """UPDATE attendance_deductions
+                   SET late_count = %s
+                   WHERE id = %s""",
+                (late_days, existing_ded["id"]),
+            )
+
+    is_applied = bool(existing_ded and existing_ded.get("status") == "APPLIED")
     cur.execute(
         """INSERT INTO monthly_late_summary (employee_id, year, month, late_days, deduction_triggered)
            VALUES (%s, %s, %s, %s, %s)
            ON DUPLICATE KEY UPDATE late_days = VALUES(late_days),
                                    deduction_triggered = VALUES(deduction_triggered)""",
-        (employee_id, y, m, late_days, half_days > 0),
+        (employee_id, y, m, late_days, is_applied),
     )
-    cur.execute(
-        """INSERT INTO attendance_deductions
-               (employee_id, year, month, deduction_type, late_count, half_days_deducted, amount)
-           VALUES (%s, %s, %s, 'LATE_ARRIVAL', %s, %s, %s)
-           ON DUPLICATE KEY UPDATE late_count = VALUES(late_count),
-                                   half_days_deducted = VALUES(half_days_deducted),
-                                   amount = VALUES(amount)""",
-        (employee_id, y, m, late_days, half_days, amount),
-    )
-    return {"late": late_flag, "late_days": late_days, "half_days": half_days, "amount": amount}
+    return {"late": late_flag, "late_days": late_days, "half_days": half_days, "amount": amount, "pending_review": (late_days >= 4 and not is_applied)}

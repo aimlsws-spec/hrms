@@ -88,8 +88,8 @@ export default function LeavePage() {
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
             >
-              <i className="fa-solid fa-plus text-xs" />
-              Record Leave (Employee / Self)
+              <i className="fa-solid fa-user-pen text-xs" />
+              Apply Leave on Behalf / Self
             </button>
           </div>
         )}

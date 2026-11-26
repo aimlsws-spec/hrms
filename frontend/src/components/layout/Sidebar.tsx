@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { to: '/analytics',    label: 'Analytics',        icon: 'fas fa-chart-line',     roles: ['admin', 'hr'] },
   { to: '/hr/home-location-requests', label: 'Location Requests', icon: 'fas fa-map-marker-alt', roles: ['admin', 'hr'] },
+  { to: '/hr/activity-logs', label: 'HR Activity Log', icon: 'fas fa-history', roles: ['admin', 'hr'] },
   // LIVE-PUNCH DISABLED: biometric menu hidden while device integration is paused.
   // {
   //   to: '/biometric',

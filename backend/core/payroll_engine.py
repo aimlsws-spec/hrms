@@ -101,8 +101,8 @@ def get_late_arrival_summary(employee_id: str, month: int, year: int,
                               monthly_salary: float, cur) -> dict:
     """Count beyond_grace occurrences for the month and return deduction info.
 
-    Rule: every 3 beyond_grace occurrences = 0.5 day salary deduction.
-    Idempotent — result is purely a function of current attendance records.
+    Rule: No automatic deduction. On the 4th arrival after 9:50 AM, an HR review is triggered.
+    Only if HR explicitly applies the deduction (status = 'APPLIED') is the half-day deduction deducted.
     """
     cur.execute("""
         SELECT COALESCE(SUM(CASE WHEN beyond_grace = 1 THEN 1 ELSE 0 END), 0) AS grace_late_count
@@ -113,16 +113,44 @@ def get_late_arrival_summary(employee_id: str, month: int, year: int,
           AND status NOT IN ('ON_LEAVE', 'ABSENT')
     """, (employee_id, year, month))
     row = cur.fetchone() or {}
-    grace_late_count  = int(_sf(row.get('grace_late_count', 0)))
-    deductions_applied = grace_late_count // 3
+    grace_late_count = int(_sf(row.get('grace_late_count', 0)))
+
+    # Fetch HR review status from attendance_deductions
+    cur.execute("""
+        SELECT half_days_deducted, amount, status
+        FROM attendance_deductions
+        WHERE employee_id = %s AND year = %s AND month = %s AND deduction_type = 'LATE_ARRIVAL'
+        ORDER BY id DESC LIMIT 1
+    """, (employee_id, year, month))
+    ded_row = cur.fetchone()
+
     total_days_m  = total_days_in_month(year, month)
     daily         = monthly_salary / total_days_m if total_days_m else 0.0
     half_day_val  = round(daily / 2, 2)
-    deduction_amt = round(deductions_applied * half_day_val, 2)
+
+    if ded_row and ded_row.get("status") == "APPLIED":
+        deductions_applied = int(ded_row.get("half_days_deducted") or 1)
+        deduction_amt = float(ded_row.get("amount") or half_day_val)
+        review_status = "APPLIED"
+    elif ded_row and ded_row.get("status") == "IGNORED":
+        deductions_applied = 0
+        deduction_amt = 0.0
+        review_status = "IGNORED"
+    elif grace_late_count >= 4:
+        # 4 or more late arrivals awaiting HR review — NO automatic deduction
+        deductions_applied = 0
+        deduction_amt = 0.0
+        review_status = "PENDING_REVIEW"
+    else:
+        deductions_applied = 0
+        deduction_amt = 0.0
+        review_status = "NONE"
+
     return {
         "grace_late_count":       grace_late_count,
         "deductions_applied":     deductions_applied,
         "late_arrival_deduction": deduction_amt,
+        "review_status":          review_status,
     }
 
 

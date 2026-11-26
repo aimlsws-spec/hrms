@@ -395,16 +395,66 @@ export default function HRAddLeaveModal({ onClose, onSuccess }: Props) {
             </div>
           </div>
 
-          {/* Reason */}
+          {/* Reason & Quick presets */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-              Reason / Remarks
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Reason / Remarks
+              </label>
+              {targetType === 'employee' && (
+                <span className="text-[10px] text-indigo-600 font-medium">Quick presets:</span>
+              )}
+            </div>
+
+            {targetType === 'employee' && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeaveType('Sick Leave')
+                    setReason('Employee unwell with high fever / sickness, unable to submit request directly')
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[10px] font-semibold transition"
+                >
+                  + Sick / Fever
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeaveType('Sick Leave')
+                    setReason('Medical emergency / hospitalized — leave submitted by HR on behalf')
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[10px] font-semibold transition"
+                >
+                  + Medical Emergency
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReason('Employee unable to access portal / network connectivity issue, submitted via HR')
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-semibold transition"
+                >
+                  + Unable to access portal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeaveType('Casual Leave')
+                    setReason('Pre-informed personal urgent work, recorded by HR on behalf')
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-semibold transition"
+                >
+                  + Personal Urgent
+                </button>
+              </div>
+            )}
+
             <textarea
               rows={2}
               value={reason}
               onChange={e => setReason(e.target.value)}
-              placeholder="e.g. Personal work, medical appointment, vacation..."
+              placeholder="e.g. Employee is sick, unable to submit request, medical emergency..."
               className="w-full p-3 border border-gray-200 rounded-xl text-xs bg-slate-50 text-gray-900 focus:outline-none focus:border-indigo-500 focus:bg-white resize-none"
             />
           </div>

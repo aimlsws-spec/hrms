@@ -79,6 +79,17 @@ export default function QuickActionsCard() {
           </button>
         ))}
       </div>
+
+      <div className="mt-3.5 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+        <span>Salary breakdown:</span>
+        <button
+          onClick={() => navigate('/employee/profile?tab=salary')}
+          className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
+        >
+          <span>Profile → Salary</span>
+          <i className="fa-solid fa-arrow-right text-[9px]" />
+        </button>
+      </div>
     </div>
   )
 }

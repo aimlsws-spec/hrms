@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useSearchParams }     from 'react-router-dom'
 import { useAuthStore }      from '../../store/authStore'
 import { useMyProfile }      from '../../hooks/employee/profile/useMyProfile'
 import { useUpdateProfile }  from '../../hooks/employee/profile/useUpdateProfile'
@@ -507,7 +508,19 @@ export default function MyProfilePage() {
   const { profile, isLoading, error, setProfile } = useMyProfile(user ?? null)
   const contactUpdate   = useUpdateProfile(userId)
 
-  const [activeTab,       setActiveTab]       = useState<TabId>('personal')
+  const [searchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab') as TabId | null
+  const validTabs: TabId[] = ['personal', 'job', 'salary', 'payslips', 'documents']
+  const [activeTab, setActiveTab] = useState<TabId>(
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'personal'
+  )
+
+  useEffect(() => {
+    const t = searchParams.get('tab') as TabId | null
+    if (t && validTabs.includes(t)) {
+      setActiveTab(t)
+    }
+  }, [searchParams])
   const [personalSaving,  setPersonalSaving]  = useState(false)
   const [personalError,   setPersonalError]   = useState<string | null>(null)
   const [personalSuccess, setPersonalSuccess] = useState(false)

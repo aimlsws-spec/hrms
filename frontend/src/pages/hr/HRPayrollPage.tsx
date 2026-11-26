@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { accountantApi, type PayrollRow } from '../../api/accountantApi'
+import LateArrivalReviewPanel from '../../components/payroll/LateArrivalReviewPanel'
 
 function fmt(n: number | null | undefined): string {
   if (n == null) return '₹0'
@@ -244,6 +245,13 @@ export default function HRPayrollPage() {
           </button>
         </div>
       )}
+
+      {/* Late-Arrival Deduction Review Panel */}
+      <LateArrivalReviewPanel
+        year={Number(monthYear.split('-')[0])}
+        month={Number(monthYear.split('-')[1])}
+        onActionCompleted={() => load(monthYear)}
+      />
 
       {/* Filters and search */}
       <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm flex items-center gap-3 flex-wrap">
